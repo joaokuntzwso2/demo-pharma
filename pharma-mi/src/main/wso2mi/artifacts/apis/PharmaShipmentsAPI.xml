@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="PharmaShipmentsAPI"
+     context="/shipments/1.0.0"
+     version="1.0.0"
+     version-type="context"
+     statistics="disable"
+     trace="disable">
+
+    <!-- GET /shipments/1.0.0/{id} – used by GetShipmentStatusTool -->
+    <resource methods="GET" uri-template="/*">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <!-- Rebuild backend URI: /shipments/{id} -->
+            <property name="REST_URL_POSTFIX"
+                      expression="concat('/shipments', get-property('axis2','REST_URL_POSTFIX'))"
+                      scope="axis2"
+                      type="STRING"/>
+
+            <send>
+                <endpoint key="ShipmentsStatusEP"/>
+            </send>
+        </inSequence>
+
+        <outSequence>
+            <sequence key="CommonOutSeq"/>
+            <send/>
+        </outSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+</api>

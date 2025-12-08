@@ -1,0 +1,12 @@
+[package]
+org = "pharma"
+name = "pharma_agent"
+version = "1.0.0"
+
+[build-options]
+observabilityIncluded = true
+
+[dependencies]
+org = "ballerinax"
+name = "ai"
+version = "1.4.0"

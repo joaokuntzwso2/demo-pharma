@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="AsyncAckSeq">
+    <payloadFactory media-type="json">
+        <format>
+            {
+              "status": "QUEUED",
+              "operation": "$1",
+              "correlationId": "$2",
+              "queue": "$3",
+              "processor": "$4",
+              "timestamp": "$5"
+            }
+        </format>
+        <args>
+            <arg evaluator="xml" expression="get-property('ASYNC_OPERATION')"/>
+            <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+            <arg evaluator="xml" expression="get-property('ASYNC_QUEUE')"/>
+            <arg evaluator="xml" expression="get-property('ASYNC_PROCESSOR')"/>
+            <arg evaluator="xml" expression="get-property('SYSTEM_TIME')"/>
+        </args>
+    </payloadFactory>
+
+    <property name="HTTP_SC" value="202" scope="axis2" type="INTEGER"/>
+
+    <sequence key="CommonOutSeq"/>
+    <respond/>
+</sequence>

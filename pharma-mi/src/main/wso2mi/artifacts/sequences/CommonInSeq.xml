@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="CommonInSeq">
+    <property name="CorrelationId"
+              expression="get-property('axis2','MessageID')"
+              scope="default"
+              type="STRING"/>
+
+    <property name="IN_TIMESTAMP"
+              expression="get-property('SYSTEM_TIME')"
+              scope="default"
+              type="LONG"/>
+
+    <header name="X-Correlation-Id"
+            scope="transport"
+            expression="get-property('CorrelationId')"/>
+
+    <log level="custom">
+        <property name="log.type" value="IN"/>
+        <property name="api.name" expression="get-property('API_NAME')"/>
+        <property name="resource" expression="get-property('axis2','REST_URL_POSTFIX')"/>
+        <property name="http.method" expression="get-property('axis2','HTTP_METHOD')"/>
+        <property name="client.ip" expression="get-property('axis2','REMOTE_ADDR')"/>
+        <property name="correlationId" expression="get-property('CorrelationId')"/>
+    </log>
+</sequence>

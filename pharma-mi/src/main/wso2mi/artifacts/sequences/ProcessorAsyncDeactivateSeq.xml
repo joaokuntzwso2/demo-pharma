@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="ProcessorAsyncDeactivateSeq">
+    <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
+    <property name="REST_URL_POSTFIX" value="" scope="axis2" type="STRING"/>
+    <property name="messageType" value="application/json" scope="axis2"/>
+
+    <payloadFactory media-type="json">
+        <format>
+            {
+              "processor": "GENERIC_PROCESSOR",
+              "operation": "$1",
+              "eventType": "DEACTIVATED",
+              "reason": "$2",
+              "errorCode": "$3",
+              "correlationId": "$4",
+              "timestamp": "$5"
+            }
+        </format>
+        <args>
+            <arg evaluator="xml" expression="get-property('ASYNC_OPERATION')"/>
+            <arg evaluator="xml" expression="get-property('ERROR_MESSAGE')"/>
+            <arg evaluator="xml" expression="get-property('ERROR_CODE')"/>
+            <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+            <arg evaluator="xml" expression="get-property('SYSTEM_TIME')"/>
+        </args>
+    </payloadFactory>
+
+    <log level="custom">
+        <property name="log.type" value="ASYNC_PROCESSOR_DEACTIVATED"/>
+        <property name="operation" expression="get-property('ASYNC_OPERATION')"/>
+        <property name="error.code" expression="get-property('ERROR_CODE')"/>
+        <property name="error.message" expression="get-property('ERROR_MESSAGE')"/>
+        <property name="correlationId" expression="get-property('CorrelationId')"/>
+    </log>
+
+    <call>
+        <endpoint key="ProcessorOpsEP"/>
+    </call>
+</sequence>

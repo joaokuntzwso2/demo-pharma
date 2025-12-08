@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence xmlns="http://ws.apache.org/ns/synapse" name="ProcessorAsyncReplySeq">
+    <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
+    <property name="REST_URL_POSTFIX" value="" scope="axis2" type="STRING"/>
+    <property name="messageType" value="application/json" scope="axis2"/>
+
+    <payloadFactory media-type="json">
+        <format>
+            {
+              "processor": "GENERIC_PROCESSOR",
+              "operation": "$1",
+              "eventType": "MESSAGE_FORWARDED",
+              "correlationId": "$2",
+              "timestamp": "$3"
+            }
+        </format>
+        <args>
+            <arg evaluator="xml" expression="get-property('ASYNC_OPERATION')"/>
+            <arg evaluator="xml" expression="get-property('CorrelationId')"/>
+            <arg evaluator="xml" expression="get-property('SYSTEM_TIME')"/>
+        </args>
+    </payloadFactory>
+
+    <log level="custom">
+        <property name="log.type" value="ASYNC_MESSAGE_FORWARDED"/>
+        <property name="operation" expression="get-property('ASYNC_OPERATION')"/>
+        <property name="correlationId" expression="get-property('CorrelationId')"/>
+    </log>
+
+    <call>
+        <endpoint key="ProcessorOpsEP"/>
+    </call>
+</sequence>

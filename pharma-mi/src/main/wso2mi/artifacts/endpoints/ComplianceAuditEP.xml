@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<endpoint xmlns="http://ws.apache.org/ns/synapse" name="ComplianceAuditEP">
+    <address uri="http://pharma-backend:8080/compliance/audit">
+        <timeout>
+            <duration>30000</duration>
+        </timeout>
+
+        <suspendOnFailure>
+            <errorCodes>101504,101505,101500,101501,101503</errorCodes>
+            <initialDuration>30000</initialDuration>
+            <progressionFactor>1.5</progressionFactor>
+            <maximumDuration>120000</maximumDuration>
+        </suspendOnFailure>
+
+        <markForSuspension>
+            <errorCodes>101504,101505,101500,101501,101503</errorCodes>
+        </markForSuspension>
+
+        <retryConfig>
+            <retryDelay>2000</retryDelay>
+            <maxRetries>1</maxRetries>
+        </retryConfig>
+    </address>
+</endpoint>

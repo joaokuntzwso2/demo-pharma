@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<endpoint xmlns="http://ws.apache.org/ns/synapse" name="TechAlertsEP">
+    <address uri="http://pharma-backend:8080/tech/alerts">
+        <timeout>
+            <duration>3000</duration>
+        </timeout>
+    </address>
+</endpoint>

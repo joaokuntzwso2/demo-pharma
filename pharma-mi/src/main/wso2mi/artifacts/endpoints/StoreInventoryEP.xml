@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<endpoint xmlns="http://ws.apache.org/ns/synapse" name="StoreInventoryEP">
+    <http uri-template="http://pharma-backend:8080/stores/{uri.var.storeId}/inventory?sku={uri.var.sku}">
+        <timeout>
+            <duration>3000</duration>
+            <!-- Force a fault to hit CommonFaultSeq on timeout -->
+            <responseAction>fault</responseAction>
+        </timeout>
+
+        <suspendOnFailure>
+            <errorCodes>101503,101504,101505</errorCodes>
+            <initialDuration>5000</initialDuration>
+            <progressionFactor>1.5</progressionFactor>
+            <maximumDuration>120000</maximumDuration>
+        </suspendOnFailure>
+
+        <markForSuspension>
+            <errorCodes>101503,101504,101505</errorCodes>
+            <retriesBeforeSuspension>3</retriesBeforeSuspension>
+        </markForSuspension>
+
+        <retryConfig>
+            <retryDelay>1000</retryDelay>
+            <maxRetries>2</maxRetries>
+        </retryConfig>
+    </http>
+</endpoint>

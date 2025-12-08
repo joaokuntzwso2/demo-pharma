@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="PharmaInventoryAPI"
+     context="/inventory/1.0.0"
+     version="1.0.0"
+     version-type="context"
+     statistics="disable"
+     trace="disable">
+
+    <!-- GET /inventory/1.0.0/stores/{storeId}/items/{sku}
+         Used by GetStoreInventoryTool -->
+    <resource methods="GET" uri-template="/stores/{storeId}/items/{sku}">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <!-- Avoid /inventory/1.0.0/stores/... being appended to backend URL -->
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <!-- Circuit-breaking, retry, etc is on StoreInventoryEP -->
+            <call>
+                <endpoint key="StoreInventoryEP"/>
+            </call>
+
+            <sequence key="CommonOutSeq"/>
+            <respond/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- POST /inventory/1.0.0/replenishment/async
+         Async internal replenishment demo: routed to Rx order backend -->
+    <resource methods="POST" uri-template="/replenishment/async">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="messageType" value="application/json" scope="axis2"/>
+
+            <log level="custom">
+                <property name="log.type" value="REPLENISHMENT_ASYNC_REQUEST"/>
+                <property name="storeId" expression="json-eval($.storeId)"/>
+                <property name="sku" expression="json-eval($.sku)"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+            </log>
+
+            <!-- Remove postfix to avoid leaking resource path to backend -->
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <!-- Async metadata -->
+            <property name="ASYNC_OPERATION" value="REPLENISHMENT_ORDER" scope="default"/>
+            <property name="ASYNC_QUEUE" value="ReplenishmentStore" scope="default"/>
+            <property name="ASYNC_PROCESSOR" value="ReplenishmentProcessor" scope="default"/>
+
+            <!-- Transform inbound payload into a valid prescription order
+                 for backend /orders/prescriptions. -->
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                      "patientId": "PAT-INTERNAL-REPLENISHMENT",
+                      "storeId": "$1",
+                      "sku": "$2",
+                      "quantity": 10,
+                      "channel": "REPLENISHMENT_ENGINE"
+                    }
+                </format>
+                <args>
+                    <arg evaluator="json" expression="$.storeId"/>
+                    <arg evaluator="json" expression="$.sku"/>
+                </args>
+            </payloadFactory>
+
+            <!-- One-way to store -->
+            <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
+
+            <store messageStore="ReplenishmentStore"/>
+
+            <sequence key="AsyncAckSeq"/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+</api>

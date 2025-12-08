@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  pharma-backend:
+    build: ./pharma-backend-js
+    container_name: pharma-backend
+    ports:
+      - "8080:8080"
+
+  wso2mi:
+    build:
+      context: ./pharma-mi
+      dockerfile: deployment/docker/Dockerfile
+    container_name: pharma-mi
+    image: pharma-mi:1.0.0
+    ports:
+      - "8290:8290"
+    environment:
+      JVM_MEM_OPTS: >
+        -Xms256m
+        -Xmx384m
+        -XX:MaxMetaspaceSize=128m
+        -XX:+UseG1GC
+        -DenableHotDeployment=false
+    depends_on:
+      - pharma-backend
+    volumes:
+      # APIs
+      - ./pharma-mi/src/main/wso2mi/artifacts/apis:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/api
+      # Endpoints
+      - ./pharma-mi/src/main/wso2mi/artifacts/endpoints:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/endpoints
+      # Sequences
+      - ./pharma-mi/src/main/wso2mi/artifacts/sequences:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/sequences
+      # Message stores
+      - ./pharma-mi/src/main/wso2mi/artifacts/message-stores:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/message-stores
+      # Message processors
+      - ./pharma-mi/src/main/wso2mi/artifacts/message-processors:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/message-processors
+      # Inbound endpoints
+      - ./pharma-mi/src/main/wso2mi/artifacts/inbound-endpoints:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/inbound-endpoints
+      # Local entries
+      - ./pharma-mi/src/main/wso2mi/artifacts/local-entries:/home/wso2carbon/wso2mi-4.5.0/repository/deployment/server/synapse-configs/default/local-entries
+      # deployment.toml
+      - ./pharma-mi/deployment/deployment.toml:/home/wso2carbon/wso2mi-4.5.0/conf/deployment.toml:ro
+      # Keystores
+      - ./pharma-mi/deployment/docker/resources/wso2carbon.jks:/home/wso2carbon/wso2mi-4.5.0/repository/resources/security/wso2carbon.jks
+      - ./pharma-mi/deployment/docker/resources/client-truststore.jks:/home/wso2carbon/wso2mi-4.5.0/repository/resources/security/client-truststore.jks
+
+  pharma-agent:
+    build: ./pharma_agent
+    container_name: pharma-agent
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BACKEND_BASE_URL=http://pharma-mi:8290
+      - HTTP_LISTENER_PORT=8293
+    ports:
+      - "8293:8293"
+    depends_on:
+      - wso2mi

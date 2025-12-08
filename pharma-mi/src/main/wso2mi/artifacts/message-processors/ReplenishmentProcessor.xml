@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<messageProcessor xmlns="http://ws.apache.org/ns/synapse"
+                  name="ReplenishmentProcessor"
+                  class="org.apache.synapse.message.processor.impl.forwarder.ScheduledMessageForwardingProcessor"
+                  messageStore="ReplenishmentStore"
+                  targetEndpoint="PrescriptionOrderEP">
+
+    <!-- Run every 6 seconds -->
+    <parameter name="interval">6000</parameter>
+
+    <!-- Processor is active on startup -->
+    <parameter name="is.active">true</parameter>
+
+    <!-- Single-threaded consumption for ordering guarantees -->
+    <parameter name="concurrency">1</parameter>
+
+    <!-- Do not retry if HTTP status is one of these -->
+    <parameter name="non.retry.status.codes">200,201,202</parameter>
+
+    <!-- Try each message at most twice before dropping -->
+    <parameter name="max.delivery.attempts">2</parameter>
+    <parameter name="max.delivery.drop">Enabled</parameter>
+
+    <!-- Sequences to notify backend about forwarded / deactivated events -->
+    <parameter name="message.processor.reply.sequence">ProcessorAsyncReplySeq</parameter>
+    <parameter name="message.processor.deactivate.sequence">ProcessorAsyncDeactivateSeq</parameter>
+</messageProcessor>
