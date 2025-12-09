@@ -16,12 +16,12 @@ services:
     ports:
       - "8290:8290"
     environment:
-      JVM_MEM_OPTS: >
-        -Xms256m
-        -Xmx384m
-        -XX:MaxMetaspaceSize=128m
-        -XX:+UseG1GC
-        -DenableHotDeployment=false
+      JAVA_OPTS: >
+            -Xms256m
+            -Xmx768m
+            -XX:MaxMetaspaceSize=256m
+            -XX:+UseG1GC
+            -DenableHotDeployment=false
     depends_on:
       - pharma-backend
     volumes:
