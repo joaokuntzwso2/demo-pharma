@@ -1,0 +1,10 @@
+---
+key: "PharmaUnifiedAPI-1.0.0"
+name : "PharmaUnifiedAPI"
+displayName : "PharmaUnifiedAPI"
+description: "PharmaUnifiedAPI"
+version: "1.0.0"
+serviceUrl: "https://{MI_HOST}:{MI_PORT}/pharmaunifiedapi"
+definitionType: "OAS3"
+securityType: "BASIC"
+mutualSSLEnabled: false

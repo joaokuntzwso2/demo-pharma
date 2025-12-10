@@ -1,0 +1,152 @@
+openapi: 3.0.1
+info:
+  title: PharmaUnifiedAPI
+  description: API Definition of PharmaUnifiedAPI
+  version: 1.0.0
+servers:
+- url: http://localhost:8290/
+- url: https://localhost:8253/
+paths:
+  /compliance/1.0.0/audit:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /customers/1.0.0/patient/{patientId}:
+    get:
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        default:
+          description: Default response
+  /finance/1.0.0/tax-report/async:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /inventory/1.0.0/stores/{storeId}/items/{sku}:
+    get:
+      parameters:
+      - name: storeId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      - name: sku
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        default:
+          description: Default response
+  /inventory/1.0.0/replenishment/async:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /orders/1.0.0/prescriptions/sync:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /orders/1.0.0/prescriptions/async:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /orders/1.0.0/*:
+    get:
+      responses:
+        default:
+          description: Default response
+  /shipments/1.0.0/*:
+    get:
+      responses:
+        default:
+          description: Default response

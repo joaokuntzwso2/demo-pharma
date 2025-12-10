@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api xmlns="http://ws.apache.org/ns/synapse"
+     name="PharmaUnifiedAPI"
+     context="/"
+     statistics="enable"
+     trace="enable">
+
+
+    <!-- ========================================================= -->
+    <!-- COMPLIANCE                                                -->
+    <!-- ========================================================= -->
+
+    <!-- POST /compliance/1.0.0/audit -->
+    <resource methods="POST" uri-template="/compliance/1.0.0/audit">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="messageType" value="application/json" scope="axis2"/>
+
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <log level="custom">
+                <property name="log.type" value="COMPLIANCE_AUDIT_REQUEST"/>
+                <property name="eventType" expression="json-eval($.eventType)"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+            </log>
+
+            <call>
+                <endpoint key="ComplianceAuditEP"/>
+            </call>
+
+            <sequence key="CommonOutSeq"/>
+            <respond/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- ========================================================= -->
+    <!-- CUSTOMERS                                                 -->
+    <!-- ========================================================= -->
+
+    <!-- GET /customers/1.0.0/patient/{patientId} -->
+    <resource methods="GET" uri-template="/customers/1.0.0/patient/{patientId}">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <!-- propagate correlation id as x-fapi-interaction-id -->
+            <header name="x-fapi-interaction-id"
+                    scope="transport"
+                    expression="get-property('CorrelationId')"/>
+
+            <send>
+                <endpoint key="CustomerProfileEP"/>
+            </send>
+        </inSequence>
+
+        <outSequence>
+            <sequence key="CommonOutSeq"/>
+            <send/>
+        </outSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- ========================================================= -->
+    <!-- FINANCE                                                   -->
+    <!-- ========================================================= -->
+
+    <!-- POST /finance/1.0.0/tax-report/async -->
+    <resource methods="POST" uri-template="/finance/1.0.0/tax-report/async">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="messageType" value="application/json" scope="axis2"/>
+
+            <log level="custom">
+                <property name="log.type" value="TAX_REPORT_ASYNC_REQUEST"/>
+                <property name="storeId" expression="json-eval($.storeId)"/>
+                <property name="amountBr" expression="json-eval($.amountBr)"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+            </log>
+
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <property name="ASYNC_OPERATION" value="TAX_REPORT" scope="default"/>
+            <property name="ASYNC_QUEUE" value="TaxReportStore" scope="default"/>
+            <property name="ASYNC_PROCESSOR" value="TaxReportProcessor" scope="default"/>
+
+            <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
+
+            <store messageStore="TaxReportStore"/>
+
+            <sequence key="AsyncAckSeq"/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- ========================================================= -->
+    <!-- INVENTORY                                                 -->
+    <!-- ========================================================= -->
+
+    <!-- GET /inventory/1.0.0/stores/{storeId}/items/{sku} -->
+    <resource methods="GET" uri-template="/inventory/1.0.0/stores/{storeId}/items/{sku}">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <call>
+                <endpoint key="StoreInventoryEP"/>
+            </call>
+
+            <sequence key="CommonOutSeq"/>
+            <respond/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- POST /inventory/1.0.0/replenishment/async -->
+    <resource methods="POST" uri-template="/inventory/1.0.0/replenishment/async">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="messageType" value="application/json" scope="axis2"/>
+
+            <log level="custom">
+                <property name="log.type" value="REPLENISHMENT_ASYNC_REQUEST"/>
+                <property name="storeId" expression="json-eval($.storeId)"/>
+                <property name="sku" expression="json-eval($.sku)"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+            </log>
+
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <property name="ASYNC_OPERATION" value="REPLENISHMENT_ORDER" scope="default"/>
+            <property name="ASYNC_QUEUE" value="ReplenishmentStore" scope="default"/>
+            <property name="ASYNC_PROCESSOR" value="ReplenishmentProcessor" scope="default"/>
+
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                      "patientId": "PAT-INTERNAL-REPLENISHMENT",
+                      "storeId": "$1",
+                      "sku": "$2",
+                      "quantity": 10,
+                      "channel": "REPLENISHMENT_ENGINE"
+                    }
+                </format>
+                <args>
+                    <arg evaluator="json" expression="$.storeId"/>
+                    <arg evaluator="json" expression="$.sku"/>
+                </args>
+            </payloadFactory>
+
+            <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
+
+            <store messageStore="ReplenishmentStore"/>
+
+            <sequence key="AsyncAckSeq"/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- ========================================================= -->
+    <!-- ORDERS                                                    -->
+    <!-- ========================================================= -->
+
+    <!-- POST /orders/1.0.0/prescriptions/sync -->
+    <resource methods="POST" uri-template="/orders/1.0.0/prescriptions/sync">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="messageType" value="application/json" scope="axis2"/>
+
+            <log level="custom">
+                <property name="log.type" value="RX_ORDER_SYNC_REQUEST"/>
+                <property name="storeId" expression="json-eval($.storeId)"/>
+                <property name="sku" expression="json-eval($.sku)"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+            </log>
+
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <call>
+                <endpoint key="PrescriptionOrderEP"/>
+            </call>
+
+            <sequence key="CommonOutSeq"/>
+            <respond/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- POST /orders/1.0.0/prescriptions/async -->
+    <resource methods="POST" uri-template="/orders/1.0.0/prescriptions/async">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="messageType" value="application/json" scope="axis2"/>
+
+            <log level="custom">
+                <property name="log.type" value="RX_ORDER_ASYNC_REQUEST"/>
+                <property name="storeId" expression="json-eval($.storeId)"/>
+                <property name="sku" expression="json-eval($.sku)"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+            </log>
+
+            <property name="REST_URL_POSTFIX"
+                      scope="axis2"
+                      action="remove"/>
+
+            <property name="ASYNC_OPERATION" value="PRESCRIPTION_ORDER" scope="default"/>
+            <property name="ASYNC_QUEUE" value="RxOrderStore" scope="default"/>
+            <property name="ASYNC_PROCESSOR" value="RxOrderProcessor" scope="default"/>
+
+            <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
+
+            <store messageStore="RxOrderStore"/>
+
+            <sequence key="AsyncAckSeq"/>
+        </inSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- GET /orders/1.0.0/{id} -->
+    <resource methods="GET" uri-template="/orders/1.0.0/*">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="REST_URL_POSTFIX"
+                      expression="concat('/orders', get-property('axis2','REST_URL_POSTFIX'))"
+                      scope="axis2"
+                      type="STRING"/>
+
+            <send>
+                <endpoint key="OrdersStatusEP"/>
+            </send>
+        </inSequence>
+
+        <outSequence>
+            <sequence key="CommonOutSeq"/>
+            <send/>
+        </outSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+    <!-- ========================================================= -->
+    <!-- SHIPMENTS                                                 -->
+    <!-- ========================================================= -->
+
+    <!-- GET /shipments/1.0.0/{id} -->
+    <resource methods="GET" uri-template="/shipments/1.0.0/*">
+        <inSequence>
+            <sequence key="CommonInSeq"/>
+
+            <property name="REST_URL_POSTFIX"
+                      expression="concat('/shipments', get-property('axis2','REST_URL_POSTFIX'))"
+                      scope="axis2"
+                      type="STRING"/>
+
+            <send>
+                <endpoint key="ShipmentsStatusEP"/>
+            </send>
+        </inSequence>
+
+        <outSequence>
+            <sequence key="CommonOutSeq"/>
+            <send/>
+        </outSequence>
+
+        <faultSequence>
+            <sequence key="CommonFaultSeq"/>
+        </faultSequence>
+    </resource>
+
+</api>
