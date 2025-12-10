@@ -117,3 +117,59 @@ const string[] TRANSIENT_LLM_ERROR_MARKERS = [
 public isolated function isTransientLLMError(ai:Error err) returns boolean {
     return containsAnySubstringIgnoreCase(err.message(), TRANSIENT_LLM_ERROR_MARKERS);
 }
+
+// -----------------------------------------------------------------------------
+// LLM usage estimation helpers for APIM AI Vendor integration
+// -----------------------------------------------------------------------------
+
+// Very simple token estimator: counts non-empty whitespace-separated chunks.
+// This is an approximation, not the provider's exact tokenizer.
+public isolated function estimateTokenCount(string text) returns int {
+    int charLen = text.length();
+
+    if charLen == 0 {
+        return 0;
+    }
+
+    int approxCharsPerToken = 4;
+
+    // Ex: 0–4 chars → 1 token, 5–8 chars → 2 tokens, etc.
+    int tokens = charLen / approxCharsPerToken;
+    if charLen % approxCharsPerToken != 0 {
+        tokens += 1;
+    }
+
+    return tokens;
+}
+
+
+// Build the LlmUsage record based on prompt + completion texts.
+// responseModel is usually OPENAI_MODEL.toString().
+public isolated function buildLlmUsage(
+    string responseModel,
+    string promptText,
+    string completionText,
+    int? remainingTokenCount = ()
+) returns LlmUsage {
+
+    int promptTokens = estimateTokenCount(promptText);
+    int completionTokens = estimateTokenCount(completionText);
+    int totalTokens = promptTokens + completionTokens;
+
+    if remainingTokenCount is int {
+        return {
+            responseModel: responseModel,
+            promptTokenCount: promptTokens,
+            completionTokenCount: completionTokens,
+            totalTokenCount: totalTokens,
+            remainingTokenCount: remainingTokenCount
+        };
+    }
+
+    return {
+        responseModel: responseModel,
+        promptTokenCount: promptTokens,
+        completionTokenCount: completionTokens,
+        totalTokenCount: totalTokens
+    };
+}

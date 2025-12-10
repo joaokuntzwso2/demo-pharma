@@ -25,7 +25,9 @@ public type AgentResponse record {|
     string agentName;
     string promptVersion;
     string message;
+    LlmUsage? llm?;
 |};
+
 
 public type ErrorBody record {|
     string message;
@@ -56,4 +58,21 @@ public type ShipmentStatusInput record {|
 public type TaxReportInput record {|
     StoreId storeId;
     decimal amountBr;
+|};
+
+// -----------------------------------------------------------------------------
+// LLM usage metadata for APIM AI Gateway
+// -----------------------------------------------------------------------------
+
+public type LlmUsage record {|
+    // Name of the underlying LLM model (e.g., "GPT_4O" or "gpt-4o")
+    string responseModel;
+
+    // Estimated token counts (prompt + completion)
+    int promptTokenCount;
+    int completionTokenCount;
+    int totalTokenCount;
+
+    // Optional: You can later wire this to a real quota store.
+    int? remainingTokenCount?;
 |};

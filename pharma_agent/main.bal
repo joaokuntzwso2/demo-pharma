@@ -136,14 +136,23 @@ function handleAgentRequestSimple(
             }
         );
 
+        LlmUsage llmUsage = buildLlmUsage(
+            OPENAI_MODEL.toString(),
+            message,
+            result
+        );
+
         AgentResponse resp = {
             sessionId: sessionId,
             agentName: agentName,
             promptVersion: promptVersion,
-            message: result
+            message: result,
+            llm: llmUsage
         };
         return buildSuccessResponse(resp, correlationId);
     }
+
+
 
     // Error path from agent execution
     log:printError("Pharma agent execution failed",
@@ -495,15 +504,23 @@ ${financeAnswer is string ? financeAnswer : ""}
         }
     );
 
+    LlmUsage llmUsage = buildLlmUsage(
+        OPENAI_MODEL.toString(),
+        userMessage,
+        finalMessage
+    );
+
     AgentResponse resp = {
         sessionId: sessionId,
         agentName: PHARMA_OMNI_AGENT_NAME,
         promptVersion: PHARMA_OMNI_PROMPT_VERSION,
-        message: finalMessage
+        message: finalMessage,
+        llm: llmUsage
     };
 
     return buildSuccessResponse(resp, correlationId);
 }
+
 
 // -----------------------------------------------------------------------------
 // Service endpoints
