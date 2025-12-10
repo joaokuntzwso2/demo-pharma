@@ -5,7 +5,6 @@
      statistics="enable"
      trace="enable">
 
-
     <!-- ========================================================= -->
     <!-- COMPLIANCE                                                -->
     <!-- ========================================================= -->
@@ -253,12 +252,13 @@
     </resource>
 
     <!-- GET /orders/1.0.0/{id} -->
-    <resource methods="GET" uri-template="/orders/1.0.0/*">
+    <resource methods="GET" uri-template="/orders/1.0.0/{id}">
         <inSequence>
             <sequence key="CommonInSeq"/>
 
+            <!-- Monta /orders/{id} para o backend Node -->
             <property name="REST_URL_POSTFIX"
-                      expression="concat('/orders', get-property('axis2','REST_URL_POSTFIX'))"
+                      expression="concat('/orders/', get-property('uri.var.id'))"
                       scope="axis2"
                       type="STRING"/>
 
@@ -282,12 +282,12 @@
     <!-- ========================================================= -->
 
     <!-- GET /shipments/1.0.0/{id} -->
-    <resource methods="GET" uri-template="/shipments/1.0.0/*">
+    <resource methods="GET" uri-template="/shipments/1.0.0/{id}">
         <inSequence>
             <sequence key="CommonInSeq"/>
 
             <property name="REST_URL_POSTFIX"
-                      expression="concat('/shipments', get-property('axis2','REST_URL_POSTFIX'))"
+                      expression="concat('/shipments/', get-property('uri.var.id'))"
                       scope="axis2"
                       type="STRING"/>
 

@@ -204,8 +204,6 @@ const storeInventory = {
 // --------------------------
 // Distribution center (DC) inventory
 // --------------------------
-//
-// Used mainly by dispatch / shipments flows to illustrate B2B-ish side.
 
 const dcInventory = {
   "CD-SP-01": {
@@ -252,10 +250,6 @@ const dcInventory = {
 // --------------------------
 // Orders, shipments, compliance, taxes, processor events
 // --------------------------
-//
-// These are intentionally minimal, but preloaded with a couple of samples so
-// the Network/Ops agent can show status flows without having to create orders
-// live every time in the demo.
 
 const ordersStore = {
   // Example: completed cold-chain order for Ana in SP
@@ -569,6 +563,16 @@ app.get("/ops/processor-events", (req, res) => {
 app.post("/tech/alerts", (req, res) => {
   console.log("[TECH ALERT] Received from MI:", req.body);
   return res.status(202).json({ status: "RECEIVED", at: nowIso() });
+});
+
+// -------------------------------------------------------
+// Global 404 fallback – always JSON (avoids HTML/DOCTYPE)
+// -------------------------------------------------------
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Rota não encontrada no backend demo",
+    path: req.path
+  });
 });
 
 // ==========================

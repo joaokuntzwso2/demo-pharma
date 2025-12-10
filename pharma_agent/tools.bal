@@ -252,6 +252,26 @@ public isolated function getOrderStatusTool(OrderStatusInput input) returns json
 
     http:Response resp = respOrErr;
 
+    log:printInfo("GetOrderStatusTool HTTP call completed",
+        'value = {
+            "statusCode": resp.statusCode,
+            "correlationId": corrId
+        });
+
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
+
+        return buildBackendErrorEnvelope(
+            "GetOrderStatusTool",
+            safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
+            resp.statusCode,
+            "Backend returned HTTP status " + resp.statusCode.toString(),
+            safeToRetry,
+            corrId
+        );
+    }
+
+    // 2xx → agora sim parseia JSON
     json|error payloadOrErr = resp.getJsonPayload();
     if payloadOrErr is error {
         log:printError("GetOrderStatusTool invalid JSON payload",
@@ -265,26 +285,9 @@ public isolated function getOrderStatusTool(OrderStatusInput input) returns json
 
     json payload = payloadOrErr;
 
-    log:printInfo("GetOrderStatusTool HTTP call completed",
-        'value = {
-            "statusCode": resp.statusCode,
-            "correlationId": corrId
-        });
-
-    if resp.statusCode >= 200 && resp.statusCode < 300 {
-        return buildBackendSuccessEnvelope("GetOrderStatusTool", resp.statusCode, payload, corrId);
-    }
-
-    boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
-    return buildBackendErrorEnvelope(
-        "GetOrderStatusTool",
-        safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
-        resp.statusCode,
-        "Backend returned HTTP status " + resp.statusCode.toString(),
-        safeToRetry,
-        corrId
-    );
+    return buildBackendSuccessEnvelope("GetOrderStatusTool", resp.statusCode, payload, corrId);
 }
+
 
 @ai:AgentTool {
     name: "GetShipmentStatusTool",
