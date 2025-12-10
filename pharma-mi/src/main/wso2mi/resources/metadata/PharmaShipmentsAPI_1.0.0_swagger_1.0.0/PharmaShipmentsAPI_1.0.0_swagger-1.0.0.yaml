@@ -1,0 +1,28 @@
+openapi: 3.0.1
+info:
+  title: PharmaShipmentsAPI
+  version: 1.0.0
+  description: API to fetch shipment status.
+paths:
+  /shipments/1.0.0/{shipmentId}:
+    get:
+      summary: Get shipment status
+      operationId: getShipmentStatus
+      parameters:
+        - name: shipmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Shipment status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Shipment not found
+        "500":
+          description: Internal server error

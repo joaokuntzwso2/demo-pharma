@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sequence xmlns="http://ws.apache.org/ns/synapse" name="CommonFaultSeq">
+<sequence name="CommonFaultSeq" trace="enable" xmlns="http://ws.apache.org/ns/synapse">
     <property name="HTTP_SC" value="500" scope="axis2" type="INTEGER"/>
-
     <!-- Map connectivity failures to 502 so the Agentic layer can classify
          them as BACKEND_UNAVAILABLE. -->
     <filter xpath="get-property('ERROR_CODE')">
@@ -38,10 +37,10 @@
     <payloadFactory media-type="json">
         <format>
             {
-              "message": "Erro na camada de integração farma (Brasil)",
-              "correlationId": "$1",
-              "errorCode": "$2",
-              "errorMessage": "$3"
+            "message": "Erro na camada de integração farma (Brasil)",
+            "correlationId": "$1",
+            "errorCode": "$2",
+            "errorMessage": "$3"
             }
         </format>
         <args>

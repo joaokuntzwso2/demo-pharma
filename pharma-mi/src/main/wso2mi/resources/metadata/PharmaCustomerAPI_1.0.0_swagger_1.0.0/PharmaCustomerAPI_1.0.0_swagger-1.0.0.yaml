@@ -1,0 +1,29 @@
+openapi: 3.0.1
+info:
+  title: PharmaCustomerAPI
+  version: 1.0.0
+  description: API to retrieve patient/customer information.
+paths:
+  /customers/1.0.0/patient/{patientId}:
+    get:
+      summary: Get patient profile
+      operationId: getPatientProfile
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique patient identifier
+      responses:
+        "200":
+          description: Patient profile
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Patient not found
+        "500":
+          description: Internal server error

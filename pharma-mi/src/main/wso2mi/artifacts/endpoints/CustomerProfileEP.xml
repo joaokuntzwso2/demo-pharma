@@ -1,26 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<endpoint xmlns="http://ws.apache.org/ns/synapse" name="CustomerProfileEP">
-    <http method="get"
-          uri-template="http://pharma-backend:8080/patients/profile/{uri.var.patientId}">
+<endpoint name="CustomerProfileEP" xmlns="http://ws.apache.org/ns/synapse">
+    <http method="get" trace="enable" uri-template="http://pharma-backend:8080/patients/profile/{uri.var.patientId}">
         <timeout>
             <duration>30000</duration>
         </timeout>
-
-        <!-- Circuit breaking for backend CRM -->
         <suspendOnFailure>
             <errorCodes>101504,101505,101500,101501,101503</errorCodes>
             <initialDuration>30000</initialDuration>
             <progressionFactor>1.5</progressionFactor>
             <maximumDuration>120000</maximumDuration>
         </suspendOnFailure>
-
         <markForSuspension>
             <errorCodes>101504,101505,101500,101501,101503</errorCodes>
+            <retriesBeforeSuspension>0</retriesBeforeSuspension>
         </markForSuspension>
-
-        <retryConfig>
-            <retryDelay>2000</retryDelay>
-            <maxRetries>1</maxRetries>
-        </retryConfig>
     </http>
 </endpoint>

@@ -1,46 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<api xmlns="http://ws.apache.org/ns/synapse"
-     name="PharmaFinanceAPI"
-     context="/finance/1.0.0"
-     version="1.0.0"
-     version-type="context"
-     statistics="disable"
-     trace="disable">
-
+<api name="PharmaFinanceAPI" statistics="enable" trace="enable" context="/finance/1.0.0" version="1.0.0" version-type="context" xmlns="http://ws.apache.org/ns/synapse">
     <!-- POST /finance/1.0.0/tax-report/async -->
     <resource methods="POST" uri-template="/tax-report/async">
         <inSequence>
             <sequence key="CommonInSeq"/>
-
             <property name="messageType" value="application/json" scope="axis2"/>
-
             <log level="custom">
                 <property name="log.type" value="TAX_REPORT_ASYNC_REQUEST"/>
                 <property name="storeId" expression="json-eval($.storeId)"/>
                 <property name="amountBr" expression="json-eval($.amountBr)"/>
                 <property name="correlationId" expression="get-property('CorrelationId')"/>
             </log>
-
             <!-- Do not append /tax-report/async to backend URL -->
-            <property name="REST_URL_POSTFIX"
-                      scope="axis2"
-                      action="remove"/>
-
+            <property name="REST_URL_POSTFIX" scope="axis2" action="remove"/>
             <!-- Async metadata kept with the message in the store -->
             <property name="ASYNC_OPERATION" value="TAX_REPORT" scope="default"/>
             <property name="ASYNC_QUEUE" value="TaxReportStore" scope="default"/>
             <property name="ASYNC_PROCESSOR" value="TaxReportProcessor" scope="default"/>
-
             <!-- One-way for async -->
             <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
-
             <!-- Enqueue to TaxReportStore; TaxReportProcessor forwards to TaxReportEP -->
             <store messageStore="TaxReportStore"/>
-
             <!-- 202 QUEUED ACK to caller -->
             <sequence key="AsyncAckSeq"/>
         </inSequence>
-
         <faultSequence>
             <sequence key="CommonFaultSeq"/>
         </faultSequence>

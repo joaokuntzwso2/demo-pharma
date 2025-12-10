@@ -1,25 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<endpoint xmlns="http://ws.apache.org/ns/synapse" name="PrescriptionOrderEP">
-    <address uri="http://pharma-backend:8080/orders/prescriptions">
+<endpoint name="PrescriptionOrderEP" xmlns="http://ws.apache.org/ns/synapse">
+    <address trace="enable" uri="http://pharma-backend:8080/orders/prescriptions">
         <timeout>
             <duration>30000</duration>
         </timeout>
-
-        <!-- Circuit breaking for RX creation -->
         <suspendOnFailure>
             <errorCodes>101504,101505,101500,101501,101503</errorCodes>
             <initialDuration>30000</initialDuration>
             <progressionFactor>1.5</progressionFactor>
             <maximumDuration>120000</maximumDuration>
         </suspendOnFailure>
-
         <markForSuspension>
             <errorCodes>101504,101505,101500,101501,101503</errorCodes>
+            <retriesBeforeSuspension>0</retriesBeforeSuspension>
         </markForSuspension>
-
-        <retryConfig>
-            <retryDelay>2000</retryDelay>
-            <maxRetries>1</maxRetries>
-        </retryConfig>
     </address>
 </endpoint>

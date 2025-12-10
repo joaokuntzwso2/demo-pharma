@@ -1,0 +1,91 @@
+openapi: 3.0.1
+info:
+  title: PharmaOrdersAPI
+  version: 1.0.0
+  description: API for creating and querying prescription orders.
+paths:
+  /orders/1.0.0/prescriptions/sync:
+    post:
+      summary: Create a prescription order synchronously
+      operationId: createPrescriptionOrderSync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                sku:
+                  type: string
+              additionalProperties: true
+      responses:
+        "200":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          description: Invalid request
+        "500":
+          description: Internal server error
+
+  /orders/1.0.0/prescriptions/async:
+    post:
+      summary: Create a prescription order asynchronously
+      operationId: createPrescriptionOrderAsync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                sku:
+                  type: string
+              additionalProperties: true
+      responses:
+        "202":
+          description: Order request accepted and queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: QUEUED
+                  correlationId:
+                    type: string
+        "400":
+          description: Invalid request
+        "500":
+          description: Internal server error
+
+  /orders/1.0.0/{orderId}:
+    get:
+      summary: Get order status
+      operationId: getOrderStatus
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Order not found
+        "500":
+          description: Internal server error

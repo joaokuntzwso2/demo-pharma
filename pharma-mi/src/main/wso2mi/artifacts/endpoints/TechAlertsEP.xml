@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<endpoint xmlns="http://ws.apache.org/ns/synapse" name="TechAlertsEP">
-    <address uri="http://pharma-backend:8080/tech/alerts">
+<endpoint name="TechAlertsEP" xmlns="http://ws.apache.org/ns/synapse">
+    <address trace="enable" uri="http://pharma-backend:8080/tech/alerts">
         <timeout>
             <duration>3000</duration>
         </timeout>
+        <suspendOnFailure>
+            <initialDuration>-1</initialDuration>
+            <progressionFactor>1</progressionFactor>
+        </suspendOnFailure>
+        <markForSuspension>
+            <retriesBeforeSuspension>0</retriesBeforeSuspension>
+        </markForSuspension>
     </address>
 </endpoint>

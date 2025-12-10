@@ -1,0 +1,39 @@
+openapi: 3.0.1
+info:
+  title: PharmaComplianceAPI
+  version: 1.0.0
+  description: API for compliance audit events in the pharma domain.
+paths:
+  /compliance/1.0.0/audit:
+    post:
+      summary: Submit a compliance audit event
+      operationId: createComplianceAudit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Generic audit event payload
+              properties:
+                eventType:
+                  type: string
+                  description: Type of compliance event
+              additionalProperties: true
+      responses:
+        "202":
+          description: Audit event accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: QUEUED
+                  correlationId:
+                    type: string
+        "400":
+          description: Invalid request
+        "500":
+          description: Internal server error

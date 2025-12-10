@@ -1,0 +1,14 @@
+openapi: 3.0.1
+info:
+  title: PharmaShipmentsAPI
+  description: API Definition of PharmaShipmentsAPI
+  version: 1.0.0
+servers:
+- url: http://localhost:8290/shipments/1.0.0
+- url: https://localhost:8253/shipments/1.0.0
+paths:
+  /*:
+    get:
+      responses:
+        default:
+          description: Default response

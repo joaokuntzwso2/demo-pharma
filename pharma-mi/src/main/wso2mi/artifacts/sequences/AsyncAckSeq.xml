@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sequence xmlns="http://ws.apache.org/ns/synapse" name="AsyncAckSeq">
+<sequence name="AsyncAckSeq" xmlns="http://ws.apache.org/ns/synapse">
     <payloadFactory media-type="json">
         <format>
             {
-              "status": "QUEUED",
-              "operation": "$1",
-              "correlationId": "$2",
-              "queue": "$3",
-              "processor": "$4",
-              "timestamp": "$5"
+            "status": "QUEUED",
+            "operation": "$1",
+            "correlationId": "$2",
+            "queue": "$3",
+            "processor": "$4",
+            "timestamp": "$5"
             }
         </format>
         <args>

@@ -1,25 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<endpoint xmlns="http://ws.apache.org/ns/synapse" name="ProcessorOpsEP">
-    <address uri="http://pharma-backend:8080/ops/processor-events">
+<endpoint name="ProcessorOpsEP" xmlns="http://ws.apache.org/ns/synapse">
+    <address trace="enable" uri="http://pharma-backend:8080/ops/processor-events">
         <timeout>
             <duration>5000</duration>
         </timeout>
-
-        <!-- Circuit break noisy ops endpoint as well -->
         <suspendOnFailure>
             <errorCodes>101504,101505,101500,101501,101503</errorCodes>
             <initialDuration>30000</initialDuration>
             <progressionFactor>1.5</progressionFactor>
             <maximumDuration>120000</maximumDuration>
         </suspendOnFailure>
-
         <markForSuspension>
             <errorCodes>101504,101505,101500,101501,101503</errorCodes>
+            <retriesBeforeSuspension>0</retriesBeforeSuspension>
         </markForSuspension>
-
-        <retryConfig>
-            <retryDelay>2000</retryDelay>
-            <maxRetries>1</maxRetries>
-        </retryConfig>
     </address>
 </endpoint>

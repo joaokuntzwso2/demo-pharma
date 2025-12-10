@@ -1,0 +1,68 @@
+openapi: 3.0.1
+info:
+  title: PharmaInventoryAPI
+  version: 1.0.0
+  description: Inventory API for querying store inventory and triggering replenishment.
+paths:
+  /inventory/1.0.0/stores/{storeId}/items/{sku}:
+    get:
+      summary: Get inventory item details for a store
+      operationId: getStoreInventoryItem
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory item details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          description: Item not found
+        "500":
+          description: Internal server error
+
+  /inventory/1.0.0/replenishment/async:
+    post:
+      summary: Submit an asynchronous replenishment order
+      operationId: createReplenishmentOrderAsync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Replenishment request payload
+              properties:
+                storeId:
+                  type: string
+                sku:
+                  type: string
+              additionalProperties: true
+      responses:
+        "202":
+          description: Replenishment request accepted and queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: QUEUED
+                  correlationId:
+                    type: string
+        "400":
+          description: Invalid request
+        "500":
+          description: Internal server error

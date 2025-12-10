@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sequence xmlns="http://ws.apache.org/ns/synapse" name="ProcessorAsyncDeactivateSeq">
+<sequence name="ProcessorAsyncDeactivateSeq" trace="enable" xmlns="http://ws.apache.org/ns/synapse">
     <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
     <property name="REST_URL_POSTFIX" value="" scope="axis2" type="STRING"/>
     <property name="messageType" value="application/json" scope="axis2"/>
@@ -7,13 +7,13 @@
     <payloadFactory media-type="json">
         <format>
             {
-              "processor": "GENERIC_PROCESSOR",
-              "operation": "$1",
-              "eventType": "DEACTIVATED",
-              "reason": "$2",
-              "errorCode": "$3",
-              "correlationId": "$4",
-              "timestamp": "$5"
+            "processor": "GENERIC_PROCESSOR",
+            "operation": "$1",
+            "eventType": "DEACTIVATED",
+            "reason": "$2",
+            "errorCode": "$3",
+            "correlationId": "$4",
+            "timestamp": "$5"
             }
         </format>
         <args>

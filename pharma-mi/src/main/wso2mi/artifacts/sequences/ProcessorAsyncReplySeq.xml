@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sequence xmlns="http://ws.apache.org/ns/synapse" name="ProcessorAsyncReplySeq">
+<sequence name="ProcessorAsyncReplySeq" trace="enable" xmlns="http://ws.apache.org/ns/synapse">
     <property name="OUT_ONLY" value="true" scope="axis2" type="STRING"/>
     <property name="REST_URL_POSTFIX" value="" scope="axis2" type="STRING"/>
     <property name="messageType" value="application/json" scope="axis2"/>
@@ -7,11 +7,11 @@
     <payloadFactory media-type="json">
         <format>
             {
-              "processor": "GENERIC_PROCESSOR",
-              "operation": "$1",
-              "eventType": "MESSAGE_FORWARDED",
-              "correlationId": "$2",
-              "timestamp": "$3"
+            "processor": "GENERIC_PROCESSOR",
+            "operation": "$1",
+            "eventType": "MESSAGE_FORWARDED",
+            "correlationId": "$2",
+            "timestamp": "$3"
             }
         </format>
         <args>

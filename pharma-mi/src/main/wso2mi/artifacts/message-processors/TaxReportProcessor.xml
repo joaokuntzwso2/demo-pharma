@@ -1,22 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<messageProcessor xmlns="http://ws.apache.org/ns/synapse"
-                  name="TaxReportProcessor"
-                  class="org.apache.synapse.message.processor.impl.forwarder.ScheduledMessageForwardingProcessor"
-                  messageStore="TaxReportStore"
-                  targetEndpoint="TaxReportEP">
-
-    <!-- Run every 8 seconds -->
-    <parameter name="interval">8000</parameter>
-
-    <parameter name="is.active">true</parameter>
-    <parameter name="concurrency">1</parameter>
-
-    <parameter name="non.retry.status.codes">200,201,202</parameter>
-
-    <!-- Try twice before dropping a tax message -->
-    <parameter name="max.delivery.attempts">2</parameter>
-    <parameter name="max.delivery.drop">Enabled</parameter>
-
+<messageProcessor class="org.apache.synapse.message.processor.impl.forwarder.ScheduledMessageForwardingProcessor" name="TaxReportProcessor" messageStore="TaxReportStore" targetEndpoint="TaxReportEP" xmlns="http://ws.apache.org/ns/synapse">
+    <parameter name="client.retry.interval">1000</parameter>
     <parameter name="message.processor.reply.sequence">ProcessorAsyncReplySeq</parameter>
+    <parameter name="non.retry.status.codes">200,201,202</parameter>
     <parameter name="message.processor.deactivate.sequence">ProcessorAsyncDeactivateSeq</parameter>
+    <parameter name="is.active">true</parameter>
+    <parameter name="max.delivery.attempts">2</parameter>
+    <parameter name="store.connection.retry.interval">1000</parameter>
+    <parameter name="max.store.connection.attempts">-1</parameter>
+    <parameter name="max.delivery.drop">Enabled</parameter>
+    <parameter name="interval">8000</parameter>
+    <parameter name="concurrency">1</parameter>
 </messageProcessor>

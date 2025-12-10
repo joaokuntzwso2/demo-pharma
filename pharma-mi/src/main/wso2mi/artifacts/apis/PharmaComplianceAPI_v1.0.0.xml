@@ -1,37 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<api xmlns="http://ws.apache.org/ns/synapse"
-     name="PharmaComplianceAPI"
-     context="/compliance/1.0.0"
-     version="1.0.0"
-     version-type="context"
-     statistics="disable"
-     trace="disable">
-
+<api name="PharmaComplianceAPI" statistics="enable" trace="enable" context="/compliance/1.0.0" version="1.0.0" version-type="context" xmlns="http://ws.apache.org/ns/synapse">
     <!-- POST /compliance/1.0.0/audit -->
     <resource methods="POST" uri-template="/audit">
         <inSequence>
             <sequence key="CommonInSeq"/>
-
             <property name="messageType" value="application/json" scope="axis2"/>
-
-            <property name="REST_URL_POSTFIX"
-                      scope="axis2"
-                      action="remove"/>
-
+            <property name="REST_URL_POSTFIX" scope="axis2" action="remove"/>
             <log level="custom">
                 <property name="log.type" value="COMPLIANCE_AUDIT_REQUEST"/>
                 <property name="eventType" expression="json-eval($.eventType)"/>
                 <property name="correlationId" expression="get-property('CorrelationId')"/>
             </log>
-
             <call>
                 <endpoint key="ComplianceAuditEP"/>
             </call>
-
             <sequence key="CommonOutSeq"/>
             <respond/>
         </inSequence>
-
         <faultSequence>
             <sequence key="CommonFaultSeq"/>
         </faultSequence>

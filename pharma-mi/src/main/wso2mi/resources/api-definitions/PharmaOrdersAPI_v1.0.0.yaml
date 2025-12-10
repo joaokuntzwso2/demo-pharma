@@ -1,0 +1,54 @@
+openapi: 3.0.1
+info:
+  title: PharmaOrdersAPI
+  description: API Definition of PharmaOrdersAPI
+  version: 1.0.0
+servers:
+- url: http://localhost:8290/orders/1.0.0
+- url: https://localhost:8253/orders/1.0.0
+paths:
+  /prescriptions/sync:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /prescriptions/async:
+    post:
+      requestBody:
+        description: Sample Payload
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+          application/xml:
+            schema:
+              type: object
+              xml:
+                name: payload
+        required: false
+      responses:
+        default:
+          description: Default response
+  /*:
+    get:
+      responses:
+        default:
+          description: Default response

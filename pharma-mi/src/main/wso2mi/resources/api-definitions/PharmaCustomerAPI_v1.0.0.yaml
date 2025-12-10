@@ -1,0 +1,22 @@
+openapi: 3.0.1
+info:
+  title: PharmaCustomerAPI
+  description: API Definition of PharmaCustomerAPI
+  version: 1.0.0
+servers:
+- url: http://localhost:8290/customers/1.0.0
+- url: https://localhost:8253/customers/1.0.0
+paths:
+  /patient/{patientId}:
+    get:
+      parameters:
+      - name: patientId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        default:
+          description: Default response

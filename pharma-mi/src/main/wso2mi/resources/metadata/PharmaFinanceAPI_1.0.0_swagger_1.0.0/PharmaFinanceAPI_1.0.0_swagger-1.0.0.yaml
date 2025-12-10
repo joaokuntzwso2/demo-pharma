@@ -1,0 +1,41 @@
+openapi: 3.0.1
+info:
+  title: PharmaFinanceAPI
+  version: 1.0.0
+  description: API for finance-related operations such as asynchronous tax report creation.
+paths:
+  /finance/1.0.0/tax-report/async:
+    post:
+      summary: Submit tax report request asynchronously
+      operationId: createTaxReportAsync
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Tax report request payload
+              properties:
+                storeId:
+                  type: string
+                amountBr:
+                  type: number
+                  format: double
+              additionalProperties: true
+      responses:
+        "202":
+          description: Tax report request accepted and queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: QUEUED
+                  correlationId:
+                    type: string
+        "400":
+          description: Invalid request
+        "500":
+          description: Internal server error

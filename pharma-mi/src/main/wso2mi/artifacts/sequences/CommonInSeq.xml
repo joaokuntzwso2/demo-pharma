@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<sequence xmlns="http://ws.apache.org/ns/synapse" name="CommonInSeq">
+<sequence name="CommonInSeq" xmlns="http://ws.apache.org/ns/synapse">
     <property name="CorrelationId"
               expression="get-property('axis2','MessageID')"
               scope="default"
