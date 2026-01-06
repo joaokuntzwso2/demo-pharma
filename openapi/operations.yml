@@ -55,7 +55,7 @@ components:
     ProcessorEventInput:
       type: object
       description: Arbitrary event payload (demo-friendly).
-      additionalProperties: true
+      additionalProperties: {}
       example:
         processor: GENERIC_PROCESSOR
         operation: PRESCRIPTION_ORDER
@@ -66,7 +66,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/ProcessorEventInput"
         - type: object
-          additionalProperties: true
+          additionalProperties: {}
           properties:
             receivedAt:
               type: string
@@ -75,7 +75,6 @@ components:
 
     ProcessorEventAck:
       type: object
-      additionalProperties: false
       properties:
         status:
           type: string

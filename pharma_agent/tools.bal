@@ -101,6 +101,62 @@ isolated function isRetryableStatusCode(int statusCode) returns boolean {
     return statusCode == 502 || statusCode == 503 || statusCode == 504;
 }
 
+// Best-effort JSON extraction:
+// - If there is no payload / empty payload, return ()
+isolated function tryGetJson(http:Response resp) returns json? {
+    json|error payloadOrErr = resp.getJsonPayload();
+    if payloadOrErr is error {
+        // Most common case we want to tolerate: empty body (e.g., 404 with no payload)
+        // We intentionally DO NOT treat as fatal for non-2xx flows.
+        return ();
+    }
+    return payloadOrErr;
+}
+
+// Normalize backend HTTP error codes for the LLM envelope.
+isolated function classifyHttpErrorCode(int statusCode) returns string {
+    if isRetryableStatusCode(statusCode) {
+        return "BACKEND_UNAVAILABLE";
+    }
+    if statusCode == 404 {
+        return "NOT_FOUND";
+    }
+    return "BACKEND_HTTP_ERROR";
+}
+
+isolated function buildHttpErrorEnvelope(
+    string toolName,
+    int statusCode,
+    string correlationId,
+    json? payload = ()
+) returns json {
+
+    boolean safeToRetry = isRetryableStatusCode(statusCode);
+
+    // Default message
+    string msg = "Backend returned HTTP status " + statusCode.toString();
+
+    // If backend returned JSON object, try to extract { "message": "..." }
+    if payload is map<anydata> {
+        anydata? maybeMsg = payload["message"];
+        if maybeMsg is string {
+            string trimmed = maybeMsg.trim();
+            if trimmed.length() > 0 {
+                msg = trimmed;
+            }
+        }
+    }
+
+    return buildBackendErrorEnvelope(
+        toolName,
+        classifyHttpErrorCode(statusCode),
+        statusCode,
+        msg,
+        safeToRetry,
+        correlationId
+    );
+}
+
 // -----------------------------------------------------------------------------
 // Agent tools (LLM-visible functions)
 // -----------------------------------------------------------------------------
@@ -131,38 +187,22 @@ public isolated function getPatientProfileTool(PatientProfileInput input) return
 
     http:Response resp = respOrErr;
 
-    json|error payloadOrErr = resp.getJsonPayload();
-    if payloadOrErr is error {
-        log:printError("GetPatientProfileTool invalid JSON payload",
-            'error = payloadOrErr,
-            'value = {
-                "statusCode": resp.statusCode,
-                "correlationId": corrId
-            });
-        return buildClientErrorEnvelope("GetPatientProfileTool", payloadOrErr, corrId);
-    }
-
-    json payload = payloadOrErr;
-
     log:printInfo("GetPatientProfileTool HTTP call completed",
         'value = {
             "statusCode": resp.statusCode,
             "correlationId": corrId
         });
 
-    if resp.statusCode >= 200 && resp.statusCode < 300 {
-        return buildBackendSuccessEnvelope("GetPatientProfileTool", resp.statusCode, payload, corrId);
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope("GetPatientProfileTool", resp.statusCode, corrId, errPayload);
     }
 
-    boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
-    return buildBackendErrorEnvelope(
-        "GetPatientProfileTool",
-        safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
-        resp.statusCode,
-        "Backend returned HTTP status " + resp.statusCode.toString(),
-        safeToRetry,
-        corrId
-    );
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope("GetPatientProfileTool", error("EMPTY_JSON_PAYLOAD"), corrId);
+    }
+    return buildBackendSuccessEnvelope("GetPatientProfileTool", resp.statusCode, payload, corrId);
 }
 
 @ai:AgentTool {
@@ -192,38 +232,22 @@ public isolated function getStoreInventoryTool(StoreInventoryInput input) return
 
     http:Response resp = respOrErr;
 
-    json|error payloadOrErr = resp.getJsonPayload();
-    if payloadOrErr is error {
-        log:printError("GetStoreInventoryTool invalid JSON payload",
-            'error = payloadOrErr,
-            'value = {
-                "statusCode": resp.statusCode,
-                "correlationId": corrId
-            });
-        return buildClientErrorEnvelope("GetStoreInventoryTool", payloadOrErr, corrId);
-    }
-
-    json payload = payloadOrErr;
-
     log:printInfo("GetStoreInventoryTool HTTP call completed",
         'value = {
             "statusCode": resp.statusCode,
             "correlationId": corrId
         });
 
-    if resp.statusCode >= 200 && resp.statusCode < 300 {
-        return buildBackendSuccessEnvelope("GetStoreInventoryTool", resp.statusCode, payload, corrId);
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope("GetStoreInventoryTool", resp.statusCode, corrId, errPayload);
     }
 
-    boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
-    return buildBackendErrorEnvelope(
-        "GetStoreInventoryTool",
-        safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
-        resp.statusCode,
-        "Backend returned HTTP status " + resp.statusCode.toString(),
-        safeToRetry,
-        corrId
-    );
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope("GetStoreInventoryTool", error("EMPTY_JSON_PAYLOAD"), corrId);
+    }
+    return buildBackendSuccessEnvelope("GetStoreInventoryTool", resp.statusCode, payload, corrId);
 }
 
 @ai:AgentTool {
@@ -259,35 +283,16 @@ public isolated function getOrderStatusTool(OrderStatusInput input) returns json
         });
 
     if resp.statusCode < 200 || resp.statusCode >= 300 {
-        boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
-
-        return buildBackendErrorEnvelope(
-            "GetOrderStatusTool",
-            safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
-            resp.statusCode,
-            "Backend returned HTTP status " + resp.statusCode.toString(),
-            safeToRetry,
-            corrId
-        );
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope("GetOrderStatusTool", resp.statusCode, corrId, errPayload);
     }
 
-    // 2xx → agora sim parseia JSON
-    json|error payloadOrErr = resp.getJsonPayload();
-    if payloadOrErr is error {
-        log:printError("GetOrderStatusTool invalid JSON payload",
-            'error = payloadOrErr,
-            'value = {
-                "statusCode": resp.statusCode,
-                "correlationId": corrId
-            });
-        return buildClientErrorEnvelope("GetOrderStatusTool", payloadOrErr, corrId);
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope("GetOrderStatusTool", error("EMPTY_JSON_PAYLOAD"), corrId);
     }
-
-    json payload = payloadOrErr;
-
     return buildBackendSuccessEnvelope("GetOrderStatusTool", resp.statusCode, payload, corrId);
 }
-
 
 @ai:AgentTool {
     name: "GetShipmentStatusTool",
@@ -315,38 +320,23 @@ public isolated function getShipmentStatusTool(ShipmentStatusInput input) return
 
     http:Response resp = respOrErr;
 
-    json|error payloadOrErr = resp.getJsonPayload();
-    if payloadOrErr is error {
-        log:printError("GetShipmentStatusTool invalid JSON payload",
-            'error = payloadOrErr,
-            'value = {
-                "statusCode": resp.statusCode,
-                "correlationId": corrId
-            });
-        return buildClientErrorEnvelope("GetShipmentStatusTool", payloadOrErr, corrId);
-    }
-
-    json payload = payloadOrErr;
-
     log:printInfo("GetShipmentStatusTool HTTP call completed",
         'value = {
             "statusCode": resp.statusCode,
             "correlationId": corrId
         });
 
-    if resp.statusCode >= 200 && resp.statusCode < 300 {
-        return buildBackendSuccessEnvelope("GetShipmentStatusTool", resp.statusCode, payload, corrId);
+    // IMPORTANT: handle 404/500 etc. without attempting JSON parse that can fail on empty body.
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope("GetShipmentStatusTool", resp.statusCode, corrId, errPayload);
     }
 
-    boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
-    return buildBackendErrorEnvelope(
-        "GetShipmentStatusTool",
-        safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
-        resp.statusCode,
-        "Backend returned HTTP status " + resp.statusCode.toString(),
-        safeToRetry,
-        corrId
-    );
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope("GetShipmentStatusTool", error("EMPTY_JSON_PAYLOAD"), corrId);
+    }
+    return buildBackendSuccessEnvelope("GetShipmentStatusTool", resp.statusCode, payload, corrId);
 }
 
 @ai:AgentTool {
@@ -381,36 +371,20 @@ public isolated function submitTaxReportTool(TaxReportInput input) returns json 
 
     http:Response resp = respOrErr;
 
-    json|error payloadOrErr = resp.getJsonPayload();
-    if payloadOrErr is error {
-        log:printError("SubmitTaxReportTool invalid JSON payload",
-            'error = payloadOrErr,
-            'value = {
-                "statusCode": resp.statusCode,
-                "correlationId": corrId
-            });
-        return buildClientErrorEnvelope("SubmitTaxReportTool", payloadOrErr, corrId);
-    }
-
-    json payload = payloadOrErr;
-
     log:printInfo("SubmitTaxReportTool HTTP call completed",
         'value = {
             "statusCode": resp.statusCode,
             "correlationId": corrId
         });
 
-    if resp.statusCode >= 200 && resp.statusCode < 300 {
-        return buildBackendSuccessEnvelope("SubmitTaxReportTool", resp.statusCode, payload, corrId);
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope("SubmitTaxReportTool", resp.statusCode, corrId, errPayload);
     }
 
-    boolean safeToRetry = isRetryableStatusCode(resp.statusCode);
-    return buildBackendErrorEnvelope(
-        "SubmitTaxReportTool",
-        safeToRetry ? "BACKEND_UNAVAILABLE" : "BACKEND_HTTP_ERROR",
-        resp.statusCode,
-        "Backend returned HTTP status " + resp.statusCode.toString(),
-        safeToRetry,
-        corrId
-    );
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope("SubmitTaxReportTool", error("EMPTY_JSON_PAYLOAD"), corrId);
+    }
+    return buildBackendSuccessEnvelope("SubmitTaxReportTool", resp.statusCode, payload, corrId);
 }

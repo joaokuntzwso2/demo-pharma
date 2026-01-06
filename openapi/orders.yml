@@ -112,7 +112,6 @@ components:
   schemas:
     CreateOrderRequest:
       type: object
-      additionalProperties: false
       properties:
         patientId:
           type: string
@@ -129,7 +128,6 @@ components:
 
     Order:
       type: object
-      additionalProperties: false
       properties:
         orderId:
           type: string
@@ -177,7 +175,6 @@ components:
 
     MessageResponse:
       type: object
-      additionalProperties: false
       properties:
         message:
           type: string
@@ -185,7 +182,6 @@ components:
 
     BackendError:
       type: object
-      additionalProperties: true
       properties:
         message:
           type: string

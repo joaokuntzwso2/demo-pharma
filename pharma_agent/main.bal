@@ -1,3 +1,4 @@
+// main.bal
 import ballerina/http;
 import ballerina/log;
 import ballerinax/ai;
@@ -47,10 +48,6 @@ function getOrGenerateCorrelationId(string? headerVal) returns string {
 
 // -----------------------------------------------------------------------------
 // Generic single-agent handler (care / ops / compliance / finance)
-// Demonstrates:
-// - input validation
-// - LLM transient-error retry (micro circuit breaker)
-// - sticky sessions via sessionId
 // -----------------------------------------------------------------------------
 
 function handleAgentRequestSimple(
@@ -97,10 +94,11 @@ function handleAgentRequestSimple(
     string sessionId = req.sessionId;
     string message = req.message;
 
+    // IMPORTANT: Avoid logging full free-form text. Truncate to reduce accidental PII leakage.
     log:printInfo("Pharma agent IN",
         'value = {
             "sessionId": sessionId,
-            "userMessage": message,
+            "userMessage": safeTruncate(message, 250),
             "agentName": agentName,
             "promptVersion": promptVersion,
             "endpointPath": endpointPath,
@@ -108,10 +106,8 @@ function handleAgentRequestSimple(
         }
     );
 
-    // Sticky session via sessionId (LLM memory keyed per end-user / channel).
     string|ai:Error result = agent->run(message, sessionId = sessionId);
 
-    // Optional single retry for transient LLM errors (rate limiting, overload, etc.).
     if result is ai:Error && isTransientLLMError(result) {
         log:printWarn("Transient LLM error detected, retrying once",
             'value = {
@@ -152,9 +148,6 @@ function handleAgentRequestSimple(
         return buildSuccessResponse(resp, correlationId);
     }
 
-
-
-    // Error path from agent execution
     log:printError("Pharma agent execution failed",
         'error = result,
         'value = {
@@ -174,12 +167,7 @@ function handleAgentRequestSimple(
 }
 
 // -----------------------------------------------------------------------------
-// Omni agent orchestration + compliance overlay
-// Patterns:
-// - Domain routing via keywords
-// - Parallel fan-out to specialized agents
-// - Synthesis via omniAgent
-// - Post-processing overlay for compliance hardening
+// Omni orchestration + compliance overlay
 // -----------------------------------------------------------------------------
 
 function materializeSubAgentAnswer(
@@ -197,7 +185,6 @@ function materializeSubAgentAnswer(
             "subAgent": subAgentName
         });
 
-    // Neutral placeholder in PT-BR.
     return string `O sub-agente ${subAgentName} teve um problema técnico ao responder.`;
 }
 
@@ -242,13 +229,12 @@ function handleOmniRequest(
     log:printInfo("Pharma omni agent IN",
         'value = {
             "sessionId": sessionId,
-            "userMessage": userMessage,
+            "userMessage": safeTruncate(userMessage, 250),
             "endpointPath": "/v1/omni/chat",
             "correlationId": correlationId
         }
     );
 
-    // 1) Detect relevant domains from the message.
     PharmaDomain[] domains = detectPharmaDomains(userMessage);
 
     boolean needsCare = false;
@@ -268,7 +254,6 @@ function handleOmniRequest(
         }
     }
 
-    // 2) Invoke selected sub-agents in parallel using futures.
     future<string|ai:Error>? careFuture = ();
     future<string|ai:Error>? opsFuture = ();
     future<string|ai:Error>? complianceFuture = ();
@@ -356,29 +341,12 @@ function handleOmniRequest(
         financeAnswer = materializeSubAgentAnswer("financeAgent", financeResult);
     }
 
-    // Count how many domains we actually used.
-    int usedDomainsCount = 0;
-    if needsCare {
-        usedDomainsCount += 1;
-    }
-    if needsOps {
-        usedDomainsCount += 1;
-    }
-    if needsCompliance {
-        usedDomainsCount += 1;
-    }
-    if needsFinance {
-        usedDomainsCount += 1;
-    }
-
     string omniInput = string `
 Pergunta original do usuário:
 
 ${userMessage}
 `;
 
-    // For both single- and multi-domain cases we build the structured “multi-view” input,
-    // with some sections possibly empty. This keeps the pattern uniform for the talk.
     if careAnswer is string && needsCare {
         omniInput = omniInput + string `
 
@@ -412,7 +380,6 @@ ${financeAnswer}
 `;
     }
 
-    // 3) Call omniAgent to synthesize a single answer.
     string|ai:Error omniResult = omniAgent->run(omniInput, sessionId = sessionId);
 
     if omniResult is ai:Error && isTransientLLMError(omniResult) {
@@ -461,7 +428,6 @@ ${financeAnswer is string ? financeAnswer : ""}
 `;
     }
 
-    // 4) Pass through compliance overlay agent to scrub advice / over-promises.
     string|ai:Error overlayResult = complianceOverlayAgent->run(
         synthesizedAnswer,
         sessionId = sessionId
@@ -521,13 +487,11 @@ ${financeAnswer is string ? financeAnswer : ""}
     return buildSuccessResponse(resp, correlationId);
 }
 
-
 // -----------------------------------------------------------------------------
 // Service endpoints
 // -----------------------------------------------------------------------------
 
 @http:ServiceConfig {
-    // For the conference demo UI; in production, tighten this list.
     cors: {
         allowOrigins: ["*"],
         allowHeaders: ["content-type", "x-correlation-id"],
@@ -536,7 +500,6 @@ ${financeAnswer is string ? financeAnswer : ""}
 }
 service /v1 on httpListener {
 
-    // Care agent: patient-care questions, prescriptions, availability at store.
     resource function post care/chat(
         @http:Payload AgentRequest req,
         @http:Header {name: "X-Correlation-Id"} string? correlationIdHeader
@@ -553,7 +516,6 @@ service /v1 on httpListener {
         );
     }
 
-    // Ops agent: inventory, orders, shipments.
     resource function post ops/chat(
         @http:Payload AgentRequest req,
         @http:Header {name: "X-Correlation-Id"} string? correlationIdHeader
@@ -570,7 +532,6 @@ service /v1 on httpListener {
         );
     }
 
-    // Compliance agent: regulatory / controlled-drug aspects from data.
     resource function post compliance/chat(
         @http:Payload AgentRequest req,
         @http:Header {name: "X-Correlation-Id"} string? correlationIdHeader
@@ -587,7 +548,6 @@ service /v1 on httpListener {
         );
     }
 
-    // Finance agent: tax async submissions explanations.
     resource function post finance/chat(
         @http:Payload AgentRequest req,
         @http:Header {name: "X-Correlation-Id"} string? correlationIdHeader
@@ -604,7 +564,6 @@ service /v1 on httpListener {
         );
     }
 
-    // Omni entry point: orchestrates care + ops + compliance + finance + overlay.
     resource function post omni/chat(
         @http:Payload AgentRequest req,
         @http:Header {name: "X-Correlation-Id"} string? correlationIdHeader
@@ -614,7 +573,6 @@ service /v1 on httpListener {
         return handleOmniRequest(req, correlationId);
     }
 
-    // Liveness
     resource function get health() returns http:Response {
         http:Response res = new;
         res.statusCode = http:STATUS_OK;
@@ -622,7 +580,6 @@ service /v1 on httpListener {
         return res;
     }
 
-    // Readiness
     resource function get health/ready() returns http:Response {
         http:Response res = new;
         _ = res.setJsonPayload({

@@ -109,7 +109,6 @@ components:
   schemas:
     DispatchShipmentRequest:
       type: object
-      additionalProperties: false
       properties:
         orderId:
           type: string
@@ -119,7 +118,6 @@ components:
 
     Shipment:
       type: object
-      additionalProperties: false
       properties:
         shipmentId:
           type: string
@@ -158,7 +156,6 @@ components:
 
     MessageResponse:
       type: object
-      additionalProperties: false
       properties:
         message:
           type: string
@@ -166,7 +163,6 @@ components:
 
     BackendError:
       type: object
-      additionalProperties: true
       properties:
         message:
           type: string

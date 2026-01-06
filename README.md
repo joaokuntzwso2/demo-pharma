@@ -1,3 +1,4 @@
+````markdown
 # Open Pharma Demo – Brazil Agentic APIs Experience Platform
 
 End-to-end demo of a **tier-1-grade digital stack for a Brazilian pharma distributor + retail chain**, built around three main layers:
@@ -62,12 +63,15 @@ For a given **patient** and **store**, we demonstrate:
 
 #### Layer 1 – Node.js Backend (`pharma-backend-js`)
 
-**File:** `pharma-backend-js/index.js`
+**Files:** `pharma-backend-js/server.js`, `pharma-backend-js/src/app.js`
+
+> Note: earlier iterations referenced `index.js`. The running backend entrypoint in this repo is `server.js`
+> (as per container logs: `node server.js`).
 
 - **Patient CRM**
 
   - `GET /patients/profile/:patientId`  
-    In-memory `patientsDb` with demo patients:
+    In-memory demo patients:
     - `PAT-BR-001` – Ana Silva (Type 1 diabetes, insulin RX),
     - `PAT-BR-002` – Carlos Souza (antibiotic RX).
 
@@ -75,13 +79,13 @@ For a given **patient** and **store**, we demonstrate:
 
   - `GET /stores/:storeId/inventory`
   - `GET /stores/:storeId/inventory?sku=MED-INSULINA`  
-    In-memory `storeInventory` with:
+    In-memory inventory with:
     - `quantityOnHand`, `reorderPoint`, `coldChain`.
 
 - **Orders**
 
   - `POST /orders/prescriptions`  
-    Creates order in `ordersStore` with:
+    Creates order with:
     - `status: "PENDING_FULFILLMENT"`,
     - `slaHours`, timestamps, `coldChain` flag.
   - `GET /orders/:id`  
@@ -90,20 +94,21 @@ For a given **patient** and **store**, we demonstrate:
 - **Shipments**
 
   - `POST /shipments/dispatch`  
-    Creates shipment in `shipmentsStore` (linked to order + DC).
+    Creates shipment (linked to order + DC).
   - `GET /shipments/:id`  
     Time-based progression `IN_TRANSIT → DELIVERED`.
 
 - **Compliance & tax**
 
-  - `POST /compliance/audit`, `GET /compliance/audit` → `complianceEvents`.
-  - `POST /finance/tax-report`, `GET /finance/tax-report` → `taxReports`.
+  - `POST /compliance/audit`, `GET /compliance/audit` → compliance events.
+  - `POST /finance/tax-report`, `GET /finance/tax-report` → tax reports.
 
 - **Integration telemetry**
 
-  - `POST /ops/processor-events`, `GET /ops/processor-events` → `processorEvents`.  
+  - `POST /ops/processor-events`, `GET /ops/processor-events`  
     Events from MI message processors (forward success/deactivation).
-  - `POST /tech/alerts` → logs “tech alerts” from MI.
+  - `POST /tech/alerts`  
+    Logs “tech alerts” from MI.
 
 Backend is intentionally **simple and deterministic**: no AI, no retries, no circuit breaking – those concerns live in MI + Agentic layers.
 
@@ -137,44 +142,51 @@ So URLs are:
 
 **Artifacts directory:** `pharma-mi/src/main/wso2mi/artifacts/apis`
 
-* **`PharmaCustomerAPI.xml`** – context `/customers`
+> Note: this repo consolidates the MI façade in a **single Synapse API**:
+> `PharmaUnifiedAPI.xml`.
 
-  * `GET /customers/1.0.0/patient/{patientId}`
-    → `CustomerProfileEP` → `GET http://pharma-backend:8080/patients/profile/{patientId}`
+* **`PharmaUnifiedAPI.xml`** – unified contexts for customers, inventory, orders, shipments, compliance, finance
 
-* **`PharmaInventoryAPI.xml`** – context `/inventory`
+  * **Customers**
 
-  * `GET /inventory/1.0.0/stores/{storeId}/items/{sku}`
-    → `StoreInventoryEP` (`http uri-template` to backend).
-  * `POST /inventory/1.0.0/replenishment/async`
-    → `ReplenishmentStore` + `ReplenishmentProcessor`
-    → transforms payload into a **prescription order** and forwards to backend via processor.
+    * `GET /customers/1.0.0/patient/{patientId}`
+      → `CustomerProfileEP` → backend `GET http://pharma-backend:8080/patients/profile/{patientId}`
 
-* **`PharmaOrdersAPI.xml`** – context `/orders`
+  * **Inventory**
 
-  * `POST /orders/1.0.0/prescriptions/sync`
-    → `PrescriptionOrderEP` (sync).
-  * `POST /orders/1.0.0/prescriptions/async`
-    → `RxOrderStore` + `RxOrderProcessor`.
-  * `GET /orders/1.0.0/*`
-    → rebuilds backend URL `/orders/{id}`
-    → `OrdersStatusEP`.
+    * `GET /inventory/1.0.0/stores/{storeId}/items/{sku}`
+      → `StoreInventoryEP` (backend inventory lookup)
+    * `POST /inventory/1.0.0/replenishment/async`
+      → `ReplenishmentStore` + `ReplenishmentProcessor`
+      → forwards to backend order creation through `PrescriptionOrderEP` (async)
 
-* **`PharmaShipmentsAPI.xml`** – context `/shipments`
+  * **Orders**
 
-  * `GET /shipments/1.0.0/*`
-    → rebuilds backend URL `/shipments/{id}`
-    → `ShipmentsStatusEP`.
+    * `POST /orders/1.0.0/prescriptions/sync`
+      → `PrescriptionOrderEP` (sync)
 
-* **`PharmaComplianceAPI.xml`** – context `/compliance`
+    * `POST /orders/1.0.0/prescriptions/async`
+      → `RxOrderStore` + `RxOrderProcessor`
 
-  * `POST /compliance/1.0.0/audit`
-    → `ComplianceAuditEP`.
+    * `GET /orders/1.0.0/{id}`
+      → `OrdersStatusEP`
 
-* **`PharmaFinanceAPI.xml`** – context `/finance`
+    > Tip: if the `orderId` contains characters like `:` (ISO timestamps), URL-encode it when calling MI.
 
-  * `POST /finance/1.0.0/tax-report/async`
-    → `TaxReportStore` + `TaxReportProcessor`.
+  * **Shipments**
+
+    * `GET /shipments/1.0.0/{id}`
+      → `ShipmentsStatusEP`
+
+  * **Compliance**
+
+    * `POST /compliance/1.0.0/audit`
+      → `ComplianceAuditEP`
+
+  * **Finance**
+
+    * `POST /finance/1.0.0/tax-report/async`
+      → `TaxReportStore` + `TaxReportProcessor`
 
 ##### 2.2.2 Shared sequences
 
@@ -194,7 +206,7 @@ So URLs are:
 * **`CommonOutSeq.xml`**
 
   * Captures `OUT_TIMESTAMP`.
-  * Uses a small JavaScript block to compute `LATENCY_MS = OUT_TIMESTAMP - IN_TIMESTAMP`.
+  * Computes `LATENCY_MS = OUT_TIMESTAMP - IN_TIMESTAMP`.
   * Logs `OUT` with:
 
     * `api.name`, `resource`,
@@ -388,7 +400,7 @@ Tools implemented:
 
 * HTTP retry handled by **Ballerina client** via `retryConfig` (status codes `[500, 502, 503, 504]`).
 * MI also has retries + circuit breaks, so you get **stacked reliability**.
-* Errors normalized with `buildBackendErrorEnvelope` / `buildClientErrorEnvelope`.
+* Errors normalized with a consistent tool envelope (including safe message extraction when MI returns a JSON body).
 
 ##### 3.2 Specialized agents (single-agent pattern)
 
@@ -523,29 +535,7 @@ Patterns implemented:
 
 3. **Synthesis via omni agent**
 
-   * Builds a **structured text** (multi-section doc) matching `PHARMA_OMNI_SYSTEM_PROMPT`:
-
-     ```text
-     Pergunta original do usuário:
-
-     {userMessage}
-
-     === Resposta do agente de cuidado ao paciente (care) ===
-
-     {careAnswer}
-
-     === Resposta do agente de operações (ops) ===
-
-     {opsAnswer}
-
-     === Resposta do agente de compliance (compliance) ===
-
-     {complianceAnswer}
-
-     === Resposta do agente financeiro (finance) ===
-
-     {financeAnswer}
-     ```
+   * Builds a **structured text** (multi-section doc) matching `PHARMA_OMNI_SYSTEM_PROMPT`.
 
    * Calls `omniAgent->run(omniInput, sessionId = sessionId)`.
 
@@ -563,7 +553,7 @@ Patterns implemented:
 
    * On failure → returns `synthesizedAnswer` without overlay.
 
-This endpoint alone demonstrates a **complete agentic orchestration pipeline**:
+This endpoint demonstrates a **complete agentic orchestration pipeline**:
 
 > **Router → Fan-out → Aggregator/Synthesizer → Compliance Overlay**
 
@@ -577,8 +567,32 @@ This endpoint alone demonstrates a **complete agentic orchestration pipeline**:
 ├── docker-compose.yml
 ├── pharma-backend-js
 │   ├── Dockerfile
-│   ├── index.js
-│   └── package.json
+│   ├── package.json
+│   ├── server.js
+│   └── src
+│       ├── app.js
+│       ├── data
+│       │   └── seed.js
+│       ├── middleware
+│       │   ├── errorHandler.js
+│       │   └── notFound.js
+│       ├── requestContext.js
+│       ├── routes
+│       │   ├── admin.routes.js
+│       │   ├── compliance.routes.js
+│       │   ├── finance.routes.js
+│       │   ├── health.routes.js
+│       │   ├── ops.routes.js
+│       │   ├── orders.routes.js
+│       │   ├── patients.routes.js
+│       │   ├── shipments.routes.js
+│       │   ├── stores.routes.js
+│       │   └── tech.routes.js
+│       ├── stores
+│       │   └── memory.store.js
+│       └── utils
+│           ├── time.js
+│           └── validation.js
 ├── pharma-mi
 │   ├── deployment
 │   │   ├── deployment.toml
@@ -597,6 +611,7 @@ This endpoint alone demonstrates a **complete agentic orchestration pipeline**:
 │       │   └── wso2mi
 │       │       ├── artifacts
 │       │       │   ├── apis
+│       │       │   │   └── PharmaUnifiedAPI.xml
 │       │       │   ├── endpoints
 │       │       │   ├── message-processors
 │       │       │   ├── message-stores
@@ -643,7 +658,7 @@ export OPENAI_API_KEY="sk-..."   # your key
 Key points:
 
 * `pharma-backend` (Node.js, `8080:8080`)
-* `wso2mi` (MI 4.5, `8290:8290`)
+* `pharma-mi` (MI 4.5, `8290:8290`)
 
   * Built from `pharma-mi/deployment/docker/Dockerfile`.
   * Uses `BASE_IMAGE=wso2/wso2mi:4.5.0`.
@@ -655,7 +670,7 @@ Key points:
 
     * `OPENAI_API_KEY=${OPENAI_API_KEY}`
     * `OPENAI_MODEL=GPT_4O`
-    * `BACKEND_BASE_URL=http://wso2mi:8290`
+    * `BACKEND_BASE_URL=http://pharma-mi:8290`
     * `BACKEND_ACCESS_TOKEN=` (empty in demo)
 
 Run:
@@ -670,8 +685,8 @@ Check:
 # Backend
 curl -s http://localhost:8080/health | jq
 
-# MI
-curl -s http://localhost:8290/services | head -n 20 || true   # basic Synapse listing
+# MI (basic Synapse listing)
+curl -s http://localhost:8290/services | head -n 20 || true
 
 # Agent layer
 curl -s http://localhost:8293/v1/health | jq
@@ -767,14 +782,14 @@ curl -s -X POST http://localhost:8080/orders/prescriptions \
 Copy `orderId` from response, then:
 
 ```bash
-ORDER_ID="ORD-LOJA-SP-001-MED-INSULINA-..."   # replace with actual
+ORDER_ID="ORD-LOJA-SP-001-MED-INSULINA-..."   # replace with actual (URL-encode if it contains ':' etc.)
 curl -s "http://localhost:8080/orders/$ORDER_ID" | jq
 ```
 
 #### Shipments
 
 ```bash
-# Dispatch shipment from DC-SP-01 for an order
+# Dispatch shipment from CD-SP-01 for an order
 curl -s -X POST http://localhost:8080/shipments/dispatch \
   -H "Content-Type: application/json" \
   -d "{
@@ -786,7 +801,7 @@ curl -s -X POST http://localhost:8080/shipments/dispatch \
 Copy `shipmentId`, then:
 
 ```bash
-SHIPMENT_ID="SHP-..."          # replace with actual
+SHIPMENT_ID="SHP-..."          # replace with actual (URL-encode if needed)
 curl -s "http://localhost:8080/shipments/$SHIPMENT_ID" | jq
 ```
 
@@ -871,7 +886,7 @@ curl -s -X POST "$BASE_MI/orders/1.0.0/prescriptions/sync" \
 Copy `orderId` and check status through MI:
 
 ```bash
-ORDER_ID="ORD-..."    # from previous response
+ORDER_ID="ORD-..."    # from previous response (URL-encode if it contains ':' etc.)
 curl -s "$BASE_MI/orders/1.0.0/$ORDER_ID" | jq
 ```
 
@@ -919,7 +934,7 @@ curl -s http://localhost:8080/ops/processor-events | jq
 Once you have a shipment in backend:
 
 ```bash
-SHIPMENT_ID="SHP-..."  # from backend /shipments/dispatch
+SHIPMENT_ID="SHP-..."  # from backend /shipments/dispatch (URL-encode if needed)
 curl -s "$BASE_MI/shipments/1.0.0/$SHIPMENT_ID" | jq
 ```
 
@@ -964,69 +979,29 @@ Assuming Ballerina service at `http://localhost:8293` and valid `OPENAI_API_KEY`
 
 Use a consistent `sessionId` per “user” to see memory in action.
 
-#### 5.3.1 Care agent – patient question
+#### 5.3.1 Omni – recommended entry point (single interface)
+
+For production-like usage, call **only** the omni endpoint:
 
 ```bash
-curl -s -X POST http://localhost:8293/v1/care/chat \
+curl -s -X POST http://localhost:8293/v1/omni/chat \
   -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: demo-omni-001" \
   -d '{
-    "sessionId": "sess-ana-1",
-    "message": "Sou a Ana PAT-BR-001. Minha insulina está para acabar, posso pedir um novo frasco na loja LOJA-SP-001?"
+    "sessionId": "sess-omni-1",
+    "message": "Sou o paciente PAT-BR-001. Minha insulina está acabando na loja LOJA-SP-001. O que vocês conseguem me dizer?"
   }' | jq
 ```
-
-Expected behavior:
-
-* Agent calls `GetPatientProfileTool` + `GetStoreInventoryTool` through MI.
-* Explains in **PT-BR**:
-
-  * Refill eligibility,
-  * Apparent stock at LOJA-SP-001,
-  * Without giving medical advice.
-
-#### 5.3.2 Ops agent – operations view
-
-```bash
-curl -s -X POST http://localhost:8293/v1/ops/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sessionId": "sess-ops-1",
-    "message": "Como está o estoque de insulina na loja LOJA-SP-001 e se preciso repor do CD?"
-  }' | jq
-```
-
-#### 5.3.3 Compliance agent – controlled drug
-
-```bash
-curl -s -X POST http://localhost:8293/v1/compliance/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sessionId": "sess-comp-1",
-    "message": "Quais cuidados de compliance devo considerar ao dispensar insulina para o paciente PAT-BR-001 na LOJA-SP-001?"
-  }' | jq
-```
-
-#### 5.3.4 Finance agent – async tax via tools
-
-```bash
-curl -s -X POST http://localhost:8293/v1/finance/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "sessionId": "sess-fin-1",
-    "message": "Envie um relatório de imposto para a loja LOJA-SP-001 no valor de 1500 reais e me explique o que foi feito."
-  }' | jq
-```
-
-#### 5.3.5 Omni – full agentic orchestration
 
 Ask something that touches **care + ops + compliance + finance**:
 
 ```bash
 curl -s -X POST http://localhost:8293/v1/omni/chat \
   -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: demo-omni-002" \
   -d '{
     "sessionId": "sess-omni-1",
-    "message": "Sou o paciente PAT-BR-001. Minha insulina está acabando na loja LOJA-SP-001, preciso repor do CD e também registrar os impostos e garantir que está tudo conforme as regras para medicamento controlado. O que vocês conseguem me dizer?"
+    "message": "Sou o paciente PAT-BR-001. Minha insulina está acabando na loja LOJA-SP-001, preciso repor do CD e também registrar os impostos e garantir que está tudo conforme as regras. O que vocês conseguem me dizer?"
   }' | jq
 ```
 
@@ -1036,6 +1011,9 @@ Under the hood:
 2. **Fan-out** runs `careAgent`, `opsAgent`, `complianceAgent`, `financeAgent` in parallel with Ballerina futures.
 3. **Omni synthesis** combines sub-answers into a single narrative (in PT-BR).
 4. **Compliance overlay** removes advice, tones down commitments, and adds a legal/medical disclaimer.
+
+> Note: The single-agent endpoints (`/v1/care/chat`, `/v1/ops/chat`, etc.) exist for debugging and demos,
+> but the recommended interface for consumers is **/v1/omni/chat**.
 
 ---
 
@@ -1050,7 +1028,7 @@ Suggested sequence for a live demo:
 
 2. **Start at the core (Node.js)**
 
-   * Show small snippets of `patientsDb` and `storeInventory`.
+   * Show small snippets of demo data.
 
    * Run:
 
@@ -1063,10 +1041,9 @@ Suggested sequence for a live demo:
 
 3. **Move to MI (integration plane)**
 
-   * Open `PharmaCustomerAPI.xml` and `CustomerProfileEP.xml`.
+   * Open `PharmaUnifiedAPI.xml` and one endpoint (e.g., `CustomerProfileEP.xml`).
 
-     * Point out `version="1.0.0"`, `version-type="context"`.
-     * Show `CommonInSeq`, `CommonOutSeq`, `CommonFaultSeq`.
+   * Show `CommonInSeq`, `CommonOutSeq`, `CommonFaultSeq`.
 
    * Run:
 
@@ -1078,7 +1055,7 @@ Suggested sequence for a live demo:
 
 4. **Show async pattern**
 
-   * Open `PharmaOrdersAPI.xml`, `RxOrderStore.xml`, `RxOrderProcessor.xml`.
+   * Open `RxOrderStore.xml`, `RxOrderProcessor.xml`.
 
    * Call:
 
@@ -1096,28 +1073,13 @@ Suggested sequence for a live demo:
 
 5. **Introduce Agentic layer**
 
-   * Show `agents.bal`:
-
-     * Briefly read out roles of care, ops, compliance, finance, omni, overlay.
-   * Show `tools.bal`:
-
-     * Highlight `@ai:AgentTool` and the **uniform envelope**.
+   * Show `agents.bal` (roles).
+   * Show `tools.bal` (`@ai:AgentTool` and uniform envelope).
    * Show `main.bal`:
 
-     * `handleAgentRequestSimple` (single-agent pattern with retry),
-     * `handleOmniRequest` (router + fan-out + overlay).
+     * Router + fan-out + synthesis + overlay.
 
-6. **Single-agent demo**
-
-   * Call care agent:
-
-     ```bash
-     curl -s -X POST http://localhost:8293/v1/care/chat ...
-     ```
-
-   * Explain how it calls MI via tools, interprets envelopes, and answers in Portuguese.
-
-7. **Omni orchestration demo**
+6. **Omni orchestration demo**
 
    * Call `/v1/omni/chat` with the multi-domain question.
    * Narrate the step-by-step orchestration:
@@ -1127,19 +1089,19 @@ Suggested sequence for a live demo:
      * Omni synthesis,
      * Compliance overlay and disclaimer.
 
-8. **Failure mode (optional)**
+7. **Failure mode (optional)**
 
    * Stop `pharma-backend` container temporarily.
-   * Hit care or omni again and show:
+   * Hit omni again and show:
 
-     * MI returns `502` with JSON fault envelope.
+     * MI returns `502` with JSON fault envelope (when applicable).
      * Tools wrap that into `status:"ERROR", errorCode:"BACKEND_UNAVAILABLE"`.
      * Prompts force the agent to say **systems are temporarily unavailable**, without fabricating data.
 
-9. **Wrap up**
+8. **Wrap up**
 
    * Emphasize:
 
      * How **agentic orchestration** is layered over traditional integration patterns.
      * How **resilience** is handled jointly by MI and Ballerina.
-     * How **safety** and **observability** are not afterthoughts, but baked into every layer through prompts, envelopes, and standardized logging.
+     * How **safety** and **observability** are baked into every layer through prompts, envelopes, and standardized logging.

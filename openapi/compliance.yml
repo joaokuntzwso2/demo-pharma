@@ -55,7 +55,7 @@ components:
     ComplianceEventInput:
       type: object
       description: Arbitrary compliance event payload (demo-friendly).
-      additionalProperties: true
+      additionalProperties: {}
       example:
         eventType: COLD_CHAIN_VALIDATED
         storeId: LOJA-SP-001
@@ -65,7 +65,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/ComplianceEventInput"
         - type: object
-          additionalProperties: true
+          additionalProperties: {}
           properties:
             complianceId:
               type: string

@@ -1,4 +1,4 @@
-import ballerina/time;
+import ballerina/uuid;
 import ballerina/lang.'string as string;
 import ballerinax/ai;
 
@@ -7,12 +7,11 @@ import ballerinax/ai;
 // -----------------------------------------------------------------------------
 
 public isolated function generateCorrelationId() returns string {
-    return "corr-" + time:utcNow().toString();
+    return "corr-" + uuid:createType4AsString();
 }
 
 public isolated function generateCorrelationIdForTool(string toolName) returns string {
-    time:Utc now = time:utcNow();
-    return string `corr-${toolName}-${now.toString()}`;
+    return string `corr-${toolName}-${uuid:createType4AsString()}`;
 }
 
 // Safely truncate a string for logs without panics.
@@ -44,7 +43,9 @@ public isolated function maskShipmentId(string shipmentId) returns string {
 // Domain routing helpers for Omni agent
 // -----------------------------------------------------------------------------
 
-// Case-insensitive "contains any of these markers?"
+// Unicode-safe enough for PT-BR routing: compare using lower *ASCII* on both sides.
+// (Keywords are ASCII or have known accents; if you want fully Unicode case-folding,
+// we'd switch to a different normalization strategy.)
 isolated function containsAnySubstringIgnoreCase(
     string sourceString,
     readonly & string[] markers
@@ -52,9 +53,12 @@ isolated function containsAnySubstringIgnoreCase(
     if sourceString.length() == 0 {
         return false;
     }
+
     string normalized = sourceString.toLowerAscii();
+
     foreach string marker in markers {
-        if string:includes(normalized, marker) {
+        string m = marker.toLowerAscii();
+        if string:includes(normalized, m) {
             return true;
         }
     }
@@ -84,19 +88,18 @@ const string[] FINANCE_KEYWORDS = [
 // Detect one or more domains from the user message.
 // Default to CARE for safety when nothing matches.
 public isolated function detectPharmaDomains(string userMessage) returns PharmaDomain[] {
-    string normalized = userMessage.toLowerAscii();
     PharmaDomain[] domains = [];
 
-    if containsAnySubstringIgnoreCase(normalized, CARE_KEYWORDS) {
+    if containsAnySubstringIgnoreCase(userMessage, CARE_KEYWORDS) {
         domains.push(<PharmaDomain>"CARE");
     }
-    if containsAnySubstringIgnoreCase(normalized, OPS_KEYWORDS) {
+    if containsAnySubstringIgnoreCase(userMessage, OPS_KEYWORDS) {
         domains.push(<PharmaDomain>"OPS");
     }
-    if containsAnySubstringIgnoreCase(normalized, COMPLIANCE_KEYWORDS) {
+    if containsAnySubstringIgnoreCase(userMessage, COMPLIANCE_KEYWORDS) {
         domains.push(<PharmaDomain>"COMPLIANCE");
     }
-    if containsAnySubstringIgnoreCase(normalized, FINANCE_KEYWORDS) {
+    if containsAnySubstringIgnoreCase(userMessage, FINANCE_KEYWORDS) {
         domains.push(<PharmaDomain>"FINANCE");
     }
 
@@ -122,8 +125,7 @@ public isolated function isTransientLLMError(ai:Error err) returns boolean {
 // LLM usage estimation helpers for APIM AI Vendor integration
 // -----------------------------------------------------------------------------
 
-// Very simple token estimator: counts non-empty whitespace-separated chunks.
-// This is an approximation, not the provider's exact tokenizer.
+// Simple token estimator (approx): chars / 4.
 public isolated function estimateTokenCount(string text) returns int {
     int charLen = text.length();
 
@@ -132,8 +134,6 @@ public isolated function estimateTokenCount(string text) returns int {
     }
 
     int approxCharsPerToken = 4;
-
-    // Ex: 0–4 chars → 1 token, 5–8 chars → 2 tokens, etc.
     int tokens = charLen / approxCharsPerToken;
     if charLen % approxCharsPerToken != 0 {
         tokens += 1;
@@ -142,9 +142,7 @@ public isolated function estimateTokenCount(string text) returns int {
     return tokens;
 }
 
-
 // Build the LlmUsage record based on prompt + completion texts.
-// responseModel is usually OPENAI_MODEL.toString().
 public isolated function buildLlmUsage(
     string responseModel,
     string promptText,

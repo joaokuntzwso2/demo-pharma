@@ -55,7 +55,7 @@ components:
     TaxReportInput:
       type: object
       description: Arbitrary tax report payload (demo-friendly).
-      additionalProperties: true
+      additionalProperties: {}
       example:
         storeId: LOJA-SP-001
         amountBr: 299.9
@@ -65,7 +65,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/TaxReportInput"
         - type: object
-          additionalProperties: true
+          additionalProperties: {}
           properties:
             reportId:
               type: string

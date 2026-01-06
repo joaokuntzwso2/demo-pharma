@@ -56,7 +56,6 @@ components:
   schemas:
     StoreInventorySkuResponse:
       type: object
-      additionalProperties: false
       properties:
         storeId:
           type: string
@@ -76,7 +75,6 @@ components:
 
     StoreInventoryFullResponse:
       type: object
-      additionalProperties: false
       properties:
         storeId:
           type: string
@@ -88,7 +86,6 @@ components:
 
     InventoryItem:
       type: object
-      additionalProperties: false
       properties:
         sku:
           type: string
@@ -106,7 +103,6 @@ components:
 
     MessageResponse:
       type: object
-      additionalProperties: false
       properties:
         message:
           type: string

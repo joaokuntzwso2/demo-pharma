@@ -39,14 +39,13 @@ components:
     TechAlertInput:
       type: object
       description: Arbitrary alert payload (demo-friendly).
-      additionalProperties: true
+      additionalProperties: {}
       example:
         severity: WARN
         message: Temperature threshold nearing limit
 
     TechAlertAck:
       type: object
-      additionalProperties: false
       properties:
         status:
           type: string

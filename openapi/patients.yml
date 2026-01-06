@@ -44,7 +44,6 @@ components:
 
     PatientProfileExists:
       type: object
-      additionalProperties: false
       properties:
         exists:
           type: boolean
@@ -77,7 +76,6 @@ components:
 
     PatientProfileNotFound:
       type: object
-      additionalProperties: false
       properties:
         exists:
           type: boolean
@@ -91,7 +89,6 @@ components:
 
     Prescription:
       type: object
-      additionalProperties: false
       properties:
         prescriptionId:
           type: string
