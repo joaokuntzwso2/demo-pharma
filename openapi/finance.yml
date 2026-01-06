@@ -1,0 +1,76 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Finance API
+  version: 1.0.0
+  description: Finance (tax report) endpoints for the Pharma demo backend (Brazil).
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /finance/tax-report:
+    post:
+      operationId: postTaxReport
+      summary: Submit a tax report payload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaxReportInput"
+      responses:
+        "201":
+          description: Stored tax report
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaxReportStored"
+
+    get:
+      operationId: listTaxReports
+      summary: List recent tax reports (last 50)
+      responses:
+        "200":
+          description: Last 50 tax reports
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaxReportStored"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    TaxReportInput:
+      type: object
+      description: Arbitrary tax report payload (demo-friendly).
+      additionalProperties: true
+      example:
+        storeId: LOJA-SP-001
+        amountBr: 299.9
+        currency: BRL
+
+    TaxReportStored:
+      allOf:
+        - $ref: "#/components/schemas/TaxReportInput"
+        - type: object
+          additionalProperties: true
+          properties:
+            reportId:
+              type: string
+              example: TAX-2026-01-06T09:12:00.000Z
+            receivedAt:
+              type: string
+              format: date-time
+          required: [reportId, receivedAt]

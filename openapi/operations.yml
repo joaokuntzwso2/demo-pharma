@@ -1,0 +1,86 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Ops API
+  version: 1.0.0
+  description: Ops endpoints for processor events emitted by MI.
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /ops/processor-events:
+    post:
+      operationId: postProcessorEvent
+      summary: Receive processor event from MI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessorEventInput"
+      responses:
+        "202":
+          description: Accepted
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessorEventAck"
+
+    get:
+      operationId: listProcessorEvents
+      summary: List recent processor events (last 50, newest first)
+      responses:
+        "200":
+          description: Last 50 processor events
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProcessorEventStored"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    ProcessorEventInput:
+      type: object
+      description: Arbitrary event payload (demo-friendly).
+      additionalProperties: true
+      example:
+        processor: GENERIC_PROCESSOR
+        operation: PRESCRIPTION_ORDER
+        eventType: MESSAGE_FORWARDED
+        correlationId: urn:uuid:...
+
+    ProcessorEventStored:
+      allOf:
+        - $ref: "#/components/schemas/ProcessorEventInput"
+        - type: object
+          additionalProperties: true
+          properties:
+            receivedAt:
+              type: string
+              format: date-time
+          required: [receivedAt]
+
+    ProcessorEventAck:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          example: RECEIVED
+        count:
+          type: integer
+          minimum: 0
+      required: [status, count]

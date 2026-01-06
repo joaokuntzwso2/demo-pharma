@@ -1,0 +1,687 @@
+openapi: 3.0.3
+info:
+  title: Pharma MI - Unified API
+  version: 1.0.0
+  description: |
+    Unified WSO2 Micro Integrator facade for the Pharma Brazil demo.
+    This OpenAPI spec matches the deployed Synapse API `PharmaUnifiedAPI`
+    and its resources (customers, inventory, orders, shipments, finance, compliance).
+
+servers:
+  - url: http://localhost:8290
+
+tags:
+  - name: Compliance
+  - name: Customers
+  - name: Inventory
+  - name: Orders
+  - name: Shipments
+  - name: Finance
+
+paths:
+  /compliance/1.0.0/audit:
+    post:
+      tags: [Compliance]
+      operationId: postComplianceAuditViaMI
+      summary: Submit a compliance audit event (sync)
+      description: Proxies to backend `/compliance/audit`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComplianceEventInput"
+            examples:
+              coldChainValidated:
+                value:
+                  eventType: COLD_CHAIN_VALIDATED
+                  storeId: LOJA-SP-001
+                  sku: MED-INSULINA
+                  orderId: ORD-LOJA-SP-001-MED-INSULINA-20260106T090757118Z
+      responses:
+        "201":
+          description: Stored compliance event
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceEventStored"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /customers/1.0.0/patient/{patientId}:
+    get:
+      tags: [Customers]
+      operationId: getPatientProfileViaMI
+      summary: Get patient profile (sync)
+      description: Proxies to backend `/patients/profile/{patientId}`.
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: PAT-BR-001
+      responses:
+        "200":
+          description: Profile response (exists true/false)
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientProfileResponse"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /inventory/1.0.0/stores/{storeId}/items/{sku}:
+    get:
+      tags: [Inventory]
+      operationId: getStoreInventoryItemViaMI
+      summary: Get store inventory for a SKU (sync)
+      description: Proxies to backend `/stores/{storeId}/inventory?sku={sku}`.
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: LOJA-SP-001
+        - name: sku
+          in: path
+          required: true
+          schema:
+            type: string
+          example: MED-INSULINA
+      responses:
+        "200":
+          description: Inventory item found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreInventorySkuResponse"
+        "404":
+          description: Store or SKU not found (from backend)
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /inventory/1.0.0/replenishment/async:
+    post:
+      tags: [Inventory]
+      operationId: createReplenishmentAsyncViaMI
+      summary: Queue replenishment order (async)
+      description: |
+        Stores a message in MI message store `ReplenishmentStore`.
+        MessageProcessor `ReplenishmentProcessor` forwards to backend order creation.
+        Returns 202 QUEUED via `AsyncAckSeq`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplenishmentRequest"
+            examples:
+              replenishInsulinRJ:
+                value:
+                  storeId: LOJA-RJ-001
+                  sku: MED-INSULINA
+      responses:
+        "202":
+          description: Queued for async processing
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncAck"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /orders/1.0.0/prescriptions/sync:
+    post:
+      tags: [Orders]
+      operationId: createPrescriptionOrderSyncViaMI
+      summary: Create prescription order (sync)
+      description: Proxies to backend `/orders/prescriptions`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+            examples:
+              createOrderExample:
+                value:
+                  patientId: PAT-BR-003
+                  storeId: LOJA-MG-001
+                  sku: MED-ANTI-HIPERTENSAO
+                  quantity: 1
+                  channel: APP_MOBILE
+      responses:
+        "201":
+          description: Order created
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Backend validation error
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Backend not found error
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /orders/1.0.0/prescriptions/async:
+    post:
+      tags: [Orders]
+      operationId: createPrescriptionOrderAsyncViaMI
+      summary: Queue prescription order (async)
+      description: |
+        Stores a message in MI message store `RxOrderStore`.
+        MessageProcessor `RxOrderProcessor` forwards to backend `/orders/prescriptions`.
+        Returns 202 QUEUED via `AsyncAckSeq`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "202":
+          description: Queued for async processing
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncAck"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /orders/1.0.0/{id}:
+    get:
+      tags: [Orders]
+      operationId: getOrderStatusViaMI
+      summary: Get order status (sync)
+      description: Proxies to backend `/orders/{id}`. Use URL-safe IDs (recommended).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-LOJA-MG-001-MED-ANTI-HIPERTENSAO-20260106T090757118Z
+      responses:
+        "200":
+          description: Order found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Order not found (from backend)
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /shipments/1.0.0/{id}:
+    get:
+      tags: [Shipments]
+      operationId: getShipmentStatusViaMI
+      summary: Get shipment status (sync)
+      description: Proxies to backend `/shipments/{id}`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SHP-ORD-LOJA-SP-001-MED-INSULINA-20260106T090757118Z-20260106T091200000Z
+      responses:
+        "200":
+          description: Shipment found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "404":
+          description: Shipment not found (from backend)
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+  /finance/1.0.0/tax-report/async:
+    post:
+      tags: [Finance]
+      operationId: createTaxReportAsyncViaMI
+      summary: Queue tax report submission (async)
+      description: |
+        Stores a message in MI message store `TaxReportStore`.
+        MessageProcessor `TaxReportProcessor` forwards to backend `/finance/tax-report`.
+        Returns 202 QUEUED via `AsyncAckSeq`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaxReportInput"
+            examples:
+              taxReportExample:
+                value:
+                  storeId: LOJA-SP-001
+                  amountBr: 299.9
+                  currency: BRL
+      responses:
+        "202":
+          description: Queued for async processing
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AsyncAck"
+        "500":
+          $ref: "#/components/responses/IntegrationError"
+        "502":
+          $ref: "#/components/responses/IntegrationError"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and downstream services.
+      schema:
+        type: string
+
+  responses:
+    IntegrationError:
+      description: MI integration fault payload (CommonFaultSeq)
+      headers:
+        X-Correlation-Id:
+          $ref: "#/components/headers/XCorrelationId"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/IntegrationError"
+
+  schemas:
+    # -----------------------------
+    # Common
+    # -----------------------------
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    IntegrationError:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+          example: Erro na camada de integração farma (Brasil)
+        correlationId:
+          type: string
+          example: urn:uuid:1234...
+        errorCode:
+          type: string
+          example: "101503"
+        errorMessage:
+          type: string
+          example: Error connecting to the backend
+      required: [message, correlationId, errorCode, errorMessage]
+
+    AsyncAck:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [QUEUED]
+        operation:
+          type: string
+          example: PRESCRIPTION_ORDER
+        correlationId:
+          type: string
+          example: urn:uuid:1234...
+        queue:
+          type: string
+          example: RxOrderStore
+        processor:
+          type: string
+          example: RxOrderProcessor
+        timestamp:
+          type: string
+          example: "1736154485123"
+          description: SYSTEM_TIME from MI (milliseconds since epoch as string/number depending on config)
+      required: [status, operation, correlationId, queue, processor, timestamp]
+
+    # -----------------------------
+    # Customers
+    # -----------------------------
+    PatientProfileResponse:
+      oneOf:
+        - $ref: "#/components/schemas/PatientProfileExists"
+        - $ref: "#/components/schemas/PatientProfileNotFound"
+
+    PatientProfileExists:
+      type: object
+      additionalProperties: false
+      properties:
+        exists:
+          type: boolean
+          enum: [true]
+        patientId:
+          type: string
+        cpf:
+          type: string
+        name:
+          type: string
+        chronicConditions:
+          type: array
+          items:
+            type: string
+        preferredStoreId:
+          type: string
+        activePrescriptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Prescription"
+      required:
+        - exists
+        - patientId
+        - cpf
+        - name
+        - chronicConditions
+        - preferredStoreId
+        - activePrescriptions
+
+    PatientProfileNotFound:
+      type: object
+      additionalProperties: false
+      properties:
+        exists:
+          type: boolean
+          enum: [false]
+        patientId:
+          type: string
+        message:
+          type: string
+      required: [exists, patientId, message]
+
+    Prescription:
+      type: object
+      additionalProperties: false
+      properties:
+        prescriptionId:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        dosage:
+          type: string
+        daysOfSupply:
+          type: integer
+          minimum: 1
+        refillable:
+          type: boolean
+        refillsRemaining:
+          type: integer
+          minimum: 0
+        lastDispensedAt:
+          type: string
+          format: date-time
+        refillEligible:
+          type: boolean
+      required:
+        - prescriptionId
+        - sku
+        - name
+        - dosage
+        - daysOfSupply
+        - refillable
+        - refillsRemaining
+        - lastDispensedAt
+        - refillEligible
+
+    # -----------------------------
+    # Inventory
+    # -----------------------------
+    StoreInventorySkuResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        storeId:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        quantityOnHand:
+          type: integer
+          minimum: 0
+        reorderPoint:
+          type: integer
+          minimum: 0
+        coldChain:
+          type: boolean
+      required: [storeId, sku, name, quantityOnHand, reorderPoint, coldChain]
+
+    ReplenishmentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        storeId:
+          type: string
+        sku:
+          type: string
+      required: [storeId, sku]
+
+    # -----------------------------
+    # Orders
+    # -----------------------------
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        patientId:
+          type: string
+          example: PAT-BR-003
+        storeId:
+          type: string
+          example: LOJA-MG-001
+        sku:
+          type: string
+          example: MED-ANTI-HIPERTENSAO
+        quantity:
+          type: integer
+          minimum: 1
+          example: 1
+        channel:
+          type: string
+          example: APP_MOBILE
+      required: [patientId, storeId, sku, quantity, channel]
+
+    Order:
+      type: object
+      additionalProperties: false
+      properties:
+        orderId:
+          type: string
+        patientId:
+          type: string
+        storeId:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        channel:
+          type: string
+        status:
+          type: string
+          enum:
+            - PENDING_FULFILLMENT
+            - IN_PROGRESS
+            - COMPLETED
+        slaHours:
+          type: integer
+          minimum: 1
+        coldChain:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+      required:
+        - orderId
+        - patientId
+        - storeId
+        - sku
+        - quantity
+        - channel
+        - status
+        - slaHours
+        - coldChain
+        - createdAt
+        - lastUpdatedAt
+
+    # -----------------------------
+    # Shipments
+    # -----------------------------
+    Shipment:
+      type: object
+      additionalProperties: false
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        dcId:
+          type: string
+        storeId:
+          type: string
+        status:
+          type: string
+          enum: [IN_TRANSIT, DELIVERED]
+        coldChain:
+          type: boolean
+        etaHours:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+      required:
+        - shipmentId
+        - orderId
+        - dcId
+        - storeId
+        - status
+        - coldChain
+        - etaHours
+        - createdAt
+        - lastUpdatedAt
+
+    # -----------------------------
+    # Compliance + Finance inputs
+    # -----------------------------
+    ComplianceEventInput:
+      type: object
+      additionalProperties: true
+      description: Arbitrary compliance event payload (demo-friendly).
+
+    ComplianceEventStored:
+      allOf:
+        - $ref: "#/components/schemas/ComplianceEventInput"
+        - type: object
+          additionalProperties: true
+          properties:
+            complianceId:
+              type: string
+              example: CMP-2026-01-06T09:10:00.000Z
+            createdAt:
+              type: string
+              format: date-time
+          required: [complianceId, createdAt]
+
+    TaxReportInput:
+      type: object
+      additionalProperties: true
+      description: Arbitrary tax report payload (demo-friendly).

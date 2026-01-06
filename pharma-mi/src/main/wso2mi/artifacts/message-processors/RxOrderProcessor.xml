@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<messageProcessor class="org.apache.synapse.message.processor.impl.forwarder.ScheduledMessageForwardingProcessor" name="RxOrderProcessor" messageStore="RxOrderStore" targetEndpoint="PrescriptionOrderEP" xmlns="http://ws.apache.org/ns/synapse">
+<messageProcessor class="org.apache.synapse.message.processor.impl.forwarder.ScheduledMessageForwardingProcessor"
+                  name="RxOrderProcessor"
+                  messageStore="RxOrderStore"
+                  targetEndpoint="PrescriptionOrderEP"
+                  xmlns="http://ws.apache.org/ns/synapse">
     <parameter name="client.retry.interval">1000</parameter>
     <parameter name="message.processor.reply.sequence">ProcessorAsyncReplySeq</parameter>
     <parameter name="non.retry.status.codes">200,201,202</parameter>

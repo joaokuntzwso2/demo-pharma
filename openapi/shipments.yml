@@ -1,0 +1,177 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Shipments API
+  version: 1.0.0
+  description: Shipment endpoints for the Pharma demo backend (Brazil).
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /shipments/dispatch:
+    post:
+      operationId: dispatchShipment
+      summary: Dispatch a shipment for an order from a distribution center
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchShipmentRequest"
+            examples:
+              dispatchExample:
+                value:
+                  orderId: ORD-LOJA-SP-001-MED-INSULINA-20260106T090757118Z
+                  dcId: CD-SP-01
+      responses:
+        "201":
+          description: Shipment created
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "400":
+          description: Validation / insufficient stock
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackendError"
+        "404":
+          description: Order/DC/SKU not found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackendError"
+
+  /shipments/{id}:
+    get:
+      operationId: getShipmentById
+      summary: Get shipment status by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: SHP-ORD-...-20260106T091200000Z
+      responses:
+        "200":
+          description: Shipment found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Shipment"
+        "404":
+          description: Shipment not found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /shipments:
+    get:
+      operationId: listShipments
+      summary: List recent shipments (debug/demo)
+      responses:
+        "200":
+          description: Last 50 shipments, newest first
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Shipment"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    DispatchShipmentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        orderId:
+          type: string
+        dcId:
+          type: string
+      required: [orderId, dcId]
+
+    Shipment:
+      type: object
+      additionalProperties: false
+      properties:
+        shipmentId:
+          type: string
+        orderId:
+          type: string
+        dcId:
+          type: string
+        storeId:
+          type: string
+        status:
+          type: string
+          enum:
+            - IN_TRANSIT
+            - DELIVERED
+        coldChain:
+          type: boolean
+        etaHours:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+      required:
+        - shipmentId
+        - orderId
+        - dcId
+        - storeId
+        - status
+        - coldChain
+        - etaHours
+        - createdAt
+        - lastUpdatedAt
+
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    BackendError:
+      type: object
+      additionalProperties: true
+      properties:
+        message:
+          type: string
+        correlationId:
+          type: string
+        error:
+          type: string
+      required: [message]

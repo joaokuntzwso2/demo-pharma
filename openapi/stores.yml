@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Stores Inventory API
+  version: 1.0.0
+  description: Store inventory endpoints for the Pharma demo backend (Brazil).
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /stores/{storeId}/inventory:
+    get:
+      operationId: getStoreInventory
+      summary: Get store inventory (single SKU or full inventory)
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: LOJA-SP-001
+        - name: sku
+          in: query
+          required: false
+          schema:
+            type: string
+          example: MED-INSULINA
+      responses:
+        "200":
+          description: Inventory response
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/StoreInventorySkuResponse"
+                  - $ref: "#/components/schemas/StoreInventoryFullResponse"
+        "404":
+          description: Store or SKU not found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    StoreInventorySkuResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        storeId:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        quantityOnHand:
+          type: integer
+          minimum: 0
+        reorderPoint:
+          type: integer
+          minimum: 0
+        coldChain:
+          type: boolean
+      required: [storeId, sku, name, quantityOnHand, reorderPoint, coldChain]
+
+    StoreInventoryFullResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        storeId:
+          type: string
+        items:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/InventoryItem"
+      required: [storeId, items]
+
+    InventoryItem:
+      type: object
+      additionalProperties: false
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        quantityOnHand:
+          type: integer
+          minimum: 0
+        reorderPoint:
+          type: integer
+          minimum: 0
+        coldChain:
+          type: boolean
+      required: [sku, name, quantityOnHand, reorderPoint, coldChain]
+
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+      required: [message]

@@ -1,0 +1,76 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Compliance API
+  version: 1.0.0
+  description: Compliance audit endpoints for the Pharma demo backend (Brazil).
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /compliance/audit:
+    post:
+      operationId: postComplianceAudit
+      summary: Store a compliance audit event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ComplianceEventInput"
+      responses:
+        "201":
+          description: Stored compliance event
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceEventStored"
+
+    get:
+      operationId: listComplianceAudit
+      summary: List recent compliance events (last 50)
+      responses:
+        "200":
+          description: Last 50 events
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComplianceEventStored"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    ComplianceEventInput:
+      type: object
+      description: Arbitrary compliance event payload (demo-friendly).
+      additionalProperties: true
+      example:
+        eventType: COLD_CHAIN_VALIDATED
+        storeId: LOJA-SP-001
+        sku: MED-INSULINA
+
+    ComplianceEventStored:
+      allOf:
+        - $ref: "#/components/schemas/ComplianceEventInput"
+        - type: object
+          additionalProperties: true
+          properties:
+            complianceId:
+              type: string
+              example: CMP-2026-01-06T09:10:00.000Z
+            createdAt:
+              type: string
+              format: date-time
+          required: [complianceId, createdAt]

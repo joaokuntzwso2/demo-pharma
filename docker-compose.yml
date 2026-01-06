@@ -56,18 +56,3 @@ services:
       - "8293:8293"
     depends_on:
       - wso2mi
-
-  opa:
-    image: openpolicyagent/opa:latest-rootless
-    container_name: opa
-    command:
-      - "run"
-      - "--server"
-      - "--addr=0.0.0.0:8181"
-      - "--log-level=debug"
-      - "/policies"
-    volumes:
-      - ./opa/policies:/policies
-    ports:
-      - "8181:8181"
-    restart: unless-stopped

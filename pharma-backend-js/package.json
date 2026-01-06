@@ -2,9 +2,12 @@
   "name": "pharma-backend-js",
   "version": "1.0.0",
   "description": "Mock backend for Open Pharma Demo (Brazil)",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "cors": "^2.8.5",

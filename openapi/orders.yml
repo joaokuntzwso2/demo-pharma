@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Orders API
+  version: 1.0.0
+  description: Prescription order endpoints for the Pharma demo backend (Brazil).
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /orders/prescriptions:
+    post:
+      operationId: createPrescriptionOrder
+      summary: Create a prescription order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+            examples:
+              orderExample:
+                value:
+                  patientId: PAT-BR-003
+                  storeId: LOJA-MG-001
+                  sku: MED-ANTI-HIPERTENSAO
+                  quantity: 1
+                  channel: APP_MOBILE
+      responses:
+        "201":
+          description: Order created
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          description: Validation error
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackendError"
+        "404":
+          description: Patient or store not found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackendError"
+
+  /orders/{id}:
+    get:
+      operationId: getOrderById
+      summary: Get order status by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ORD-LOJA-MG-001-MED-ANTI-HIPERTENSAO-20260106T090757118Z
+      responses:
+        "200":
+          description: Order found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Order not found
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /orders:
+    get:
+      operationId: listOrders
+      summary: List recent orders (debug/demo)
+      responses:
+        "200":
+          description: Last 50 orders, newest first
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    CreateOrderRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        patientId:
+          type: string
+        storeId:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        channel:
+          type: string
+      required: [patientId, storeId, sku, quantity, channel]
+
+    Order:
+      type: object
+      additionalProperties: false
+      properties:
+        orderId:
+          type: string
+        patientId:
+          type: string
+        storeId:
+          type: string
+        sku:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        channel:
+          type: string
+        status:
+          type: string
+          description: Demo order status
+          enum:
+            - PENDING_FULFILLMENT
+            - IN_PROGRESS
+            - COMPLETED
+        slaHours:
+          type: integer
+          minimum: 1
+        coldChain:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastUpdatedAt:
+          type: string
+          format: date-time
+      required:
+        - orderId
+        - patientId
+        - storeId
+        - sku
+        - quantity
+        - channel
+        - status
+        - slaHours
+        - coldChain
+        - createdAt
+        - lastUpdatedAt
+
+    MessageResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    BackendError:
+      type: object
+      additionalProperties: true
+      properties:
+        message:
+          type: string
+        correlationId:
+          type: string
+        error:
+          type: string
+      required: [message]

@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Admin API
+  version: 1.0.0
+  description: Demo admin endpoints (reset/snapshot) for the Pharma backend.
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /admin/reset:
+    post:
+      operationId: resetDemoState
+      summary: Reset in-memory stores to seed state
+      responses:
+        "200":
+          description: Reset complete
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminResetResponse"
+
+  /admin/snapshot:
+    get:
+      operationId: getDemoSnapshot
+      summary: Get current in-memory store snapshot (counts)
+      responses:
+        "200":
+          description: Snapshot
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSnapshotResponse"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    SnapshotCounts:
+      type: object
+      additionalProperties: false
+      properties:
+        patients:
+          type: integer
+          minimum: 0
+        stores:
+          type: integer
+          minimum: 0
+        dcs:
+          type: integer
+          minimum: 0
+        orders:
+          type: integer
+          minimum: 0
+        shipments:
+          type: integer
+          minimum: 0
+        complianceEvents:
+          type: integer
+          minimum: 0
+        taxReports:
+          type: integer
+          minimum: 0
+        processorEvents:
+          type: integer
+          minimum: 0
+      required:
+        - patients
+        - stores
+        - dcs
+        - orders
+        - shipments
+        - complianceEvents
+        - taxReports
+        - processorEvents
+
+    AdminResetResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          example: RESET
+        snapshot:
+          $ref: "#/components/schemas/SnapshotCounts"
+      required: [status, snapshot]
+
+    AdminSnapshotResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        snapshot:
+          $ref: "#/components/schemas/SnapshotCounts"
+      required: [snapshot]

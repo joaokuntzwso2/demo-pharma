@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Patients API
+  version: 1.0.0
+  description: Patient profile endpoints for the Pharma demo backend (Brazil).
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /patients/profile/{patientId}:
+    get:
+      operationId: getPatientProfile
+      summary: Get patient profile by patientId
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: PAT-BR-001
+      responses:
+        "200":
+          description: Profile response (exists true/false)
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientProfileResponse"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    PatientProfileResponse:
+      oneOf:
+        - $ref: "#/components/schemas/PatientProfileExists"
+        - $ref: "#/components/schemas/PatientProfileNotFound"
+
+    PatientProfileExists:
+      type: object
+      additionalProperties: false
+      properties:
+        exists:
+          type: boolean
+          enum: [true]
+        patientId:
+          type: string
+        cpf:
+          type: string
+          description: Brazilian CPF (demo)
+        name:
+          type: string
+        chronicConditions:
+          type: array
+          items:
+            type: string
+        preferredStoreId:
+          type: string
+        activePrescriptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Prescription"
+      required:
+        - exists
+        - patientId
+        - cpf
+        - name
+        - chronicConditions
+        - preferredStoreId
+        - activePrescriptions
+
+    PatientProfileNotFound:
+      type: object
+      additionalProperties: false
+      properties:
+        exists:
+          type: boolean
+          enum: [false]
+        patientId:
+          type: string
+        message:
+          type: string
+          example: Paciente não encontrado na base de demo
+      required: [exists, patientId, message]
+
+    Prescription:
+      type: object
+      additionalProperties: false
+      properties:
+        prescriptionId:
+          type: string
+        sku:
+          type: string
+        name:
+          type: string
+        dosage:
+          type: string
+        daysOfSupply:
+          type: integer
+          minimum: 1
+        refillable:
+          type: boolean
+        refillsRemaining:
+          type: integer
+          minimum: 0
+        lastDispensedAt:
+          type: string
+          format: date-time
+        refillEligible:
+          type: boolean
+          description: Computed server-side
+      required:
+        - prescriptionId
+        - sku
+        - name
+        - dosage
+        - daysOfSupply
+        - refillable
+        - refillsRemaining
+        - lastDispensedAt
+        - refillEligible

@@ -1,0 +1,57 @@
+openapi: 3.0.3
+info:
+  title: Pharma Backend - Tech Alerts API
+  version: 1.0.0
+  description: Tech alert endpoint for MI alerts.
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /tech/alerts:
+    post:
+      operationId: postTechAlert
+      summary: Receive tech alert from MI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TechAlertInput"
+      responses:
+        "202":
+          description: Accepted
+          headers:
+            X-Correlation-Id:
+              $ref: "#/components/headers/XCorrelationId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TechAlertAck"
+
+components:
+  headers:
+    XCorrelationId:
+      description: Correlation ID for tracing across MI and backend.
+      schema:
+        type: string
+
+  schemas:
+    TechAlertInput:
+      type: object
+      description: Arbitrary alert payload (demo-friendly).
+      additionalProperties: true
+      example:
+        severity: WARN
+        message: Temperature threshold nearing limit
+
+    TechAlertAck:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          example: RECEIVED
+        at:
+          type: string
+          format: date-time
+      required: [status, at]

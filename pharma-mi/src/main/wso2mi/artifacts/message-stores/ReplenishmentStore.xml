@@ -2,6 +2,5 @@
 <messageStore xmlns="http://ws.apache.org/ns/synapse"
               name="ReplenishmentStore"
               class="org.apache.synapse.message.store.impl.memory.InMemoryStore">
-    <!-- How long to wait before retrying a failed store operation -->
     <parameter name="store.fail.wait.sec">5</parameter>
 </messageStore>
