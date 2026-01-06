@@ -1,4 +1,3 @@
-````markdown
 # Open Pharma Demo – Brazil Agentic APIs Experience Platform
 
 End-to-end demo of a **tier-1-grade digital stack for a Brazilian pharma distributor + retail chain**, built around three main layers:
