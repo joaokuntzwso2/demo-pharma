@@ -8,6 +8,7 @@ services:
       - "8080:8080"
 
   wso2mi:
+    platform: linux/amd64
     build:
       context: ./pharma-mi
       dockerfile: deployment/docker/Dockerfile
