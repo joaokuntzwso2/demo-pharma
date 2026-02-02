@@ -1,16 +1,11 @@
-# Pharma BI Agents - Ballerina HTTP service
 FROM ballerina/ballerina:2201.12.9
-
 WORKDIR /app
 
-# Copy the entire Ballerina project
+USER root
 COPY . .
 
-# Optional: remove existing Dependencies.toml and let bal build regenerate it
-RUN rm -f Dependencies.toml && bal build
+# ensure the target directory can be cleaned/created
+RUN rm -rf /app/target && bal build
 
-# Expose agent HTTP port
 EXPOSE 8293
-
-# Run the compiled artifact to avoid recompiling inside the container
-CMD ["bal", "run", "target/bin/pharma_agent.jar"]
+CMD ["java", "-jar", "target/bin/pharma_agent.jar"]
