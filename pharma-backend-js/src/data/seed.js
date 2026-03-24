@@ -10,8 +10,8 @@ const seed = {
         {
           prescriptionId: "RX-PAT-BR-001-INS-2025-01",
           sku: "MED-INSULINA",
-          name: "Insulina 10 ml",
-          dosage: "10 unidades 2 vezes ao dia",
+          name: "Insulin 10 ml",
+          dosage: "10 units twice a day",
           daysOfSupply: 30,
           refillable: true,
           refillsRemaining: 2,
@@ -29,8 +29,8 @@ const seed = {
         {
           prescriptionId: "RX-PAT-BR-002-ATB-2025-01",
           sku: "MED-ANTIBIOTICO",
-          name: "Antibiótico 500 mg",
-          dosage: "1 cápsula a cada 12 horas",
+          name: "Antibiotic 500 mg",
+          dosage: "1 capsule every 12 hours",
           daysOfSupply: 7,
           refillable: false,
           refillsRemaining: 0,
@@ -48,8 +48,8 @@ const seed = {
         {
           prescriptionId: "RX-PAT-BR-003-ANTI-2025-01",
           sku: "MED-ANTI-HIPERTENSAO",
-          name: "Anti-hipertensivo 20 mg",
-          dosage: "1 comprimido ao dia",
+          name: "Antihypertensive 20 mg",
+          dosage: "1 tablet daily",
           daysOfSupply: 30,
           refillable: true,
           refillsRemaining: 1,
@@ -58,8 +58,8 @@ const seed = {
         {
           prescriptionId: "RX-PAT-BR-003-ANALG-2025-01",
           sku: "MED-ANALGESICO",
-          name: "Analgésico 750 mg",
-          dosage: "1 comprimido se necessário (máx. 3x/dia)",
+          name: "Pain reliever 750 mg",
+          dosage: "1 tablet as needed (max. 3 times/day)",
           daysOfSupply: 10,
           refillable: false,
           refillsRemaining: 0,
@@ -72,26 +72,26 @@ const seed = {
   storeInventory: {
     "LOJA-SP-001": {
       storeId: "LOJA-SP-001",
-      name: "Drogaria Centro SP",
+      name: "Downtown SP Drugstore",
       region: "SP",
       items: {
         "MED-INSULINA": {
           sku: "MED-INSULINA",
-          name: "Insulina 10 ml",
+          name: "Insulin 10 ml",
           quantityOnHand: 3,
           reorderPoint: 2,
           coldChain: true
         },
         "MED-ANTIBIOTICO": {
           sku: "MED-ANTIBIOTICO",
-          name: "Antibiótico 500 mg",
+          name: "Antibiotic 500 mg",
           quantityOnHand: 20,
           reorderPoint: 10,
           coldChain: false
         },
         "MED-ANALGESICO": {
           sku: "MED-ANALGESICO",
-          name: "Analgésico 750 mg",
+          name: "Pain reliever 750 mg",
           quantityOnHand: 50,
           reorderPoint: 20,
           coldChain: false
@@ -100,19 +100,19 @@ const seed = {
     },
     "LOJA-RJ-001": {
       storeId: "LOJA-RJ-001",
-      name: "Drogaria Zona Sul RJ",
+      name: "South Zone RJ Drugstore",
       region: "RJ",
       items: {
         "MED-INSULINA": {
           sku: "MED-INSULINA",
-          name: "Insulina 10 ml",
+          name: "Insulin 10 ml",
           quantityOnHand: 0,
           reorderPoint: 3,
           coldChain: true
         },
         "MED-ANTIBIOTICO": {
           sku: "MED-ANTIBIOTICO",
-          name: "Antibiótico 500 mg",
+          name: "Antibiotic 500 mg",
           quantityOnHand: 5,
           reorderPoint: 10,
           coldChain: false
@@ -121,19 +121,19 @@ const seed = {
     },
     "LOJA-MG-001": {
       storeId: "LOJA-MG-001",
-      name: "Drogaria Savassi BH",
+      name: "Savassi BH Drugstore",
       region: "MG",
       items: {
         "MED-ANTI-HIPERTENSAO": {
           sku: "MED-ANTI-HIPERTENSAO",
-          name: "Anti-hipertensivo 20 mg",
+          name: "Antihypertensive 20 mg",
           quantityOnHand: 8,
           reorderPoint: 5,
           coldChain: false
         },
         "MED-ANALGESICO": {
           sku: "MED-ANALGESICO",
-          name: "Analgésico 750 mg",
+          name: "Pain reliever 750 mg",
           quantityOnHand: 10,
           reorderPoint: 20,
           coldChain: false
@@ -145,7 +145,7 @@ const seed = {
   dcInventory: {
     "CD-SP-01": {
       dcId: "CD-SP-01",
-      name: "Centro de Distribuição SP",
+      name: "SP Distribution Center",
       region: "SP",
       items: {
         "MED-INSULINA": { sku: "MED-INSULINA", quantityOnHand: 200, coldChain: true },
@@ -155,7 +155,7 @@ const seed = {
     },
     "CD-RJ-01": {
       dcId: "CD-RJ-01",
-      name: "Centro de Distribuição RJ",
+      name: "RJ Distribution Center",
       region: "RJ",
       items: {
         "MED-INSULINA": { sku: "MED-INSULINA", quantityOnHand: 80, coldChain: true },

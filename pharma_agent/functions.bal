@@ -43,9 +43,8 @@ public isolated function maskShipmentId(string shipmentId) returns string {
 // Domain routing helpers for Omni agent
 // -----------------------------------------------------------------------------
 
-// Unicode-safe enough for PT-BR routing: compare using lower *ASCII* on both sides.
-// (Keywords are ASCII or have known accents; if you want fully Unicode case-folding,
-// we'd switch to a different normalization strategy.)
+// ASCII case-insensitive substring check.
+// This is intentionally simple and robust for mixed English/PT-BR prompts.
 isolated function containsAnySubstringIgnoreCase(
     string sourceString,
     readonly & string[] markers
@@ -66,23 +65,46 @@ isolated function containsAnySubstringIgnoreCase(
 }
 
 // Keyword dictionaries for routing.
+// Include both English and Portuguese for robustness, even though the final
+// agent responses are expected to be in English.
 const string[] CARE_KEYWORDS = [
-    "paciente", "receita", "prescrição", "refil", "refill", "remédio",
-    "medicação", "dose", "dosagem", "farmácia", "loja"
+    "patient", "patients", "profile", "crm",
+    "prescription", "prescriptions", "refill", "refillable", "renewal",
+    "medication", "medicine", "drug", "drugs",
+    "dose", "dosage", "pharmacy", "store",
+    "paciente", "pacientes", "receita", "receitas", "prescrição", "prescrições",
+    "refil", "renovação", "remédio", "remedios", "remédios",
+    "medicação", "medicacao", "dose", "dosagem", "farmácia", "farmacia", "loja"
 ];
 
 const string[] OPS_KEYWORDS = [
-    "estoque", "inventário", "disponível", "loja", "cd", "centro de distribuição",
-    "pedido", "ordem", "remessa", "expedição", "reposição", "replenishment"
+    "inventory", "stock", "availability", "available",
+    "store", "stores", "dc", "distribution center",
+    "order", "orders", "shipment", "shipments", "dispatch",
+    "fulfillment", "replenishment", "replenish", "supply chain",
+    "estoque", "inventário", "inventario", "disponível", "disponivel",
+    "loja", "lojas", "cd", "centro de distribuição", "centro de distribuicao",
+    "pedido", "pedidos", "ordem", "ordens", "remessa", "remessas",
+    "expedição", "expedicao", "reposição", "reposicao", "replenishment"
 ];
 
 const string[] COMPLIANCE_KEYWORDS = [
-    "controlado", "medicamento controlado", "tarja preta", "boas práticas",
-    "compliance", "conformidade", "anvisa", "regulatório"
+    "compliance", "regulatory", "regulation", "regulated",
+    "controlled", "controlled drug", "controlled medication",
+    "cold chain", "audit", "documentation", "document",
+    "prescription validity", "valid prescription", "traceability",
+    "controlado", "medicamento controlado", "tarja preta",
+    "boas práticas", "boas praticas", "conformidade", "anvisa",
+    "regulatório", "regulatorio", "auditoria", "documentação", "documentacao",
+    "prescrição válida", "prescricao valida", "rastreabilidade"
 ];
 
 const string[] FINANCE_KEYWORDS = [
-    "nota fiscal", "nf-e", "icms", "imposto", "taxa", "tributo", "fiscal"
+    "finance", "financial", "tax", "taxes", "tax report",
+    "invoice", "electronic invoice", "fiscal", "icms", "nf-e",
+    "tribute", "revenue",
+    "nota fiscal", "nf-e", "icms", "imposto", "impostos",
+    "taxa", "tributo", "tributos", "fiscal", "financeiro", "relatório fiscal", "relatorio fiscal"
 ];
 
 // Detect one or more domains from the user message.
@@ -114,7 +136,9 @@ public isolated function detectPharmaDomains(string userMessage) returns PharmaD
 // -----------------------------------------------------------------------------
 
 const string[] TRANSIENT_LLM_ERROR_MARKERS = [
-    "rate limit", "tpm", "rpm", "timeout", "overloaded", "server error", "unavailable"
+    "rate limit", "tpm", "rpm", "timeout", "timed out",
+    "overloaded", "server error", "unavailable",
+    "temporarily unavailable", "try again later", "gateway timeout"
 ];
 
 public isolated function isTransientLLMError(ai:Error err) returns boolean {

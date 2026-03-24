@@ -263,7 +263,7 @@ public isolated function getOrderStatusTool(OrderStatusInput input) returns json
             "orderIdMasked": maskOrderId(input.orderId)
         });
 
-    string path = string `/orders/1.0.0/${input.orderId}`;
+    string path = string `/orders/1.0.0?orderId=${input.orderId}`;
     map<string|string[]> headers = buildBackendHeaders(corrId);
 
     http:Response|error respOrErr = backendClient->get(path, headers);
@@ -307,7 +307,7 @@ public isolated function getShipmentStatusTool(ShipmentStatusInput input) return
             "shipmentIdMasked": maskShipmentId(input.shipmentId)
         });
 
-    string path = string `/shipments/1.0.0/${input.shipmentId}`;
+    string path = string `/shipments/1.0.0?shipmentId=${input.shipmentId}`;
     map<string|string[]> headers = buildBackendHeaders(corrId);
 
     http:Response|error respOrErr = backendClient->get(path, headers);

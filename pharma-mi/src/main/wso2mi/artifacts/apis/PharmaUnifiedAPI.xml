@@ -242,59 +242,57 @@
         </faultSequence>
     </resource>
 
-    <!-- GET /orders/1.0.0/{id} -->
-    <resource methods="GET" uri-template="/orders/1.0.0/{id}">
-        <inSequence>
-            <sequence key="CommonInSeq"/>
+<!-- GET /orders/1.0.0?orderId=... -->
+<resource methods="GET" uri-template="/orders/1.0.0">
+    <inSequence>
+        <sequence key="CommonInSeq"/>
 
-            <!-- Monta /orders/{id} para o backend Node -->
-            <property name="REST_URL_POSTFIX"
-                      expression="concat('/orders/', get-property('uri.var.id'))"
-                      scope="axis2"
-                      type="STRING"/>
+        <property name="REST_URL_POSTFIX"
+                  expression="concat('/orders/', get-property('query.param.orderId'))"
+                  scope="axis2"
+                  type="STRING"/>
 
-            <send>
-                <endpoint key="OrdersStatusEP"/>
-            </send>
-        </inSequence>
+        <send>
+            <endpoint key="OrdersStatusEP"/>
+        </send>
+    </inSequence>
 
-        <outSequence>
-            <sequence key="CommonOutSeq"/>
-            <send/>
-        </outSequence>
+    <outSequence>
+        <sequence key="CommonOutSeq"/>
+        <send/>
+    </outSequence>
 
-        <faultSequence>
-            <sequence key="CommonFaultSeq"/>
-        </faultSequence>
-    </resource>
+    <faultSequence>
+        <sequence key="CommonFaultSeq"/>
+    </faultSequence>
+</resource>
 
     <!-- ========================================================= -->
     <!-- SHIPMENTS                                                 -->
     <!-- ========================================================= -->
+<!-- GET /shipments/1.0.0?shipmentId=... -->
+<resource methods="GET" uri-template="/shipments/1.0.0">
+    <inSequence>
+        <sequence key="CommonInSeq"/>
 
-    <!-- GET /shipments/1.0.0/{id} -->
-    <resource methods="GET" uri-template="/shipments/1.0.0/{id}">
-        <inSequence>
-            <sequence key="CommonInSeq"/>
+        <property name="REST_URL_POSTFIX"
+                  expression="concat('/shipments/', get-property('query.param.shipmentId'))"
+                  scope="axis2"
+                  type="STRING"/>
 
-            <property name="REST_URL_POSTFIX"
-                      expression="concat('/shipments/', get-property('uri.var.id'))"
-                      scope="axis2"
-                      type="STRING"/>
+        <send>
+            <endpoint key="ShipmentsStatusEP"/>
+        </send>
+    </inSequence>
 
-            <send>
-                <endpoint key="ShipmentsStatusEP"/>
-            </send>
-        </inSequence>
+    <outSequence>
+        <sequence key="CommonOutSeq"/>
+        <send/>
+    </outSequence>
 
-        <outSequence>
-            <sequence key="CommonOutSeq"/>
-            <send/>
-        </outSequence>
-
-        <faultSequence>
-            <sequence key="CommonFaultSeq"/>
-        </faultSequence>
-    </resource>
+    <faultSequence>
+        <sequence key="CommonFaultSeq"/>
+    </faultSequence>
+</resource>
 
 </api>

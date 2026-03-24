@@ -1,9 +1,27 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <sequence name="CommonInSeq" xmlns="http://ws.apache.org/ns/synapse">
+    <!-- Prefer incoming headers -->
     <property name="CorrelationId"
-              expression="get-property('axis2','MessageID')"
+              expression="get-property('transport','X-Correlation-Id')"
               scope="default"
               type="STRING"/>
+
+    <filter xpath="not(get-property('CorrelationId'))">
+        <then>
+            <property name="CorrelationId"
+                      expression="get-property('transport','x-fapi-interaction-id')"
+                      scope="default"
+                      type="STRING"/>
+        </then>
+    </filter>
+
+    <filter xpath="not(get-property('CorrelationId'))">
+        <then>
+            <property name="CorrelationId"
+                      expression="get-property('axis2','MessageID')"
+                      scope="default"
+                      type="STRING"/>
+        </then>
+    </filter>
 
     <property name="IN_TIMESTAMP"
               expression="get-property('SYSTEM_TIME')"

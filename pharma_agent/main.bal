@@ -185,7 +185,7 @@ function materializeSubAgentAnswer(
             "subAgent": subAgentName
         });
 
-    return string `O sub-agente ${subAgentName} teve um problema técnico ao responder.`;
+    return string `The sub-agent ${subAgentName} had a technical problem while responding.`;
 }
 
 function handleOmniRequest(
@@ -342,7 +342,7 @@ function handleOmniRequest(
     }
 
     string omniInput = string `
-Pergunta original do usuário:
+Original user question:
 
 ${userMessage}
 `;
@@ -350,7 +350,7 @@ ${userMessage}
     if careAnswer is string && needsCare {
         omniInput = omniInput + string `
 
-=== Resposta do agente de cuidado ao paciente (care) ===
+=== Patient care agent response (care) ===
 
 ${careAnswer}
 `;
@@ -358,7 +358,7 @@ ${careAnswer}
     if opsAnswer is string && needsOps {
         omniInput = omniInput + string `
 
-=== Resposta do agente de operações (ops) ===
+=== Operations agent response (ops) ===
 
 ${opsAnswer}
 `;
@@ -366,7 +366,7 @@ ${opsAnswer}
     if complianceAnswer is string && needsCompliance {
         omniInput = omniInput + string `
 
-=== Resposta do agente de compliance (compliance) ===
+=== Compliance agent response (compliance) ===
 
 ${complianceAnswer}
 `;
@@ -374,7 +374,7 @@ ${complianceAnswer}
     if financeAnswer is string && needsFinance {
         omniInput = omniInput + string `
 
-=== Resposta do agente financeiro (finance) ===
+=== Finance agent response (finance) ===
 
 ${financeAnswer}
 `;
@@ -408,21 +408,21 @@ ${financeAnswer}
             });
 
         synthesizedAnswer = string `
-A seguir, trago a visão combinada dos sub-agentes:
+Below is the combined view from the sub-agents:
 
-=== Visão de cuidado ao paciente (care) ===
+=== Patient care view (care) ===
 
 ${careAnswer is string ? careAnswer : ""}
 
-=== Visão de operações (ops) ===
+=== Operations view (ops) ===
 
 ${opsAnswer is string ? opsAnswer : ""}
 
-=== Visão de compliance ===
+=== Compliance view ===
 
 ${complianceAnswer is string ? complianceAnswer : ""}
 
-=== Visão financeira ===
+=== Finance view ===
 
 ${financeAnswer is string ? financeAnswer : ""}
 `;
