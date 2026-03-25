@@ -1,0 +1,201 @@
+openapi: 3.0.3
+info:
+  title: PharmaOmniAgentAPI
+  description: >
+    Omni agent orchestration endpoint for Pharma, used as a Custom AI
+    Provider in WSO2 API Manager.
+
+    This API exposes a single chat endpoint that orchestrates multiple internal
+    agents (care, operations, compliance, finance) and returns a final safe
+    answer, along with LLM usage metadata for analytics and throttling.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8293/
+    description: Replace with the actual base URL of the Omni Agent service
+
+security:
+  - default: []
+
+paths:
+  /v1/omni/chat:
+    post:
+      summary: Chat with Pharma Omni Agent
+      description: >
+        Receives a user message and a sticky sessionId,
+        orchestrates multiple domain agents (care, operations, compliance, finance),
+        applies a compliance overlay, and returns a final safe response
+        along with LLM usage metadata.
+      operationId: omniChat
+      requestBody:
+        required: true
+        description: >
+          Request payload for the Omni Agent.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+            example:
+              sessionId: "sess-omni-1"
+              message: "Please look up patient PAT-BR-001, summarize the active prescriptions, and tell me whether MED-INSULINA appears to be available at store LOJA-SP-001."
+      responses:
+        '200':
+          description: Successful response from Omni Agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+              example:
+                sessionId: "sess-omni-1"
+                agentName: "PharmaOmniAgent"
+                promptVersion: "pharma-omni-v1.0.0"
+                message: "Please look up patient PAT-BR-001, summarize the active prescriptions, and tell me whether MED-INSULINA appears to be available at store LOJA-SP-001."
+                llm:
+                  responseModel: "gpt-4o"
+                  promptTokenCount: 27
+                  completionTokenCount: 120
+                  totalTokenCount: 147
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal error during agent execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      security:
+        - default: []
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - api_key
+        optional: false
+
+components:
+  schemas:
+    AgentRequest:
+      type: object
+      required:
+        - message
+        - sessionId
+      properties:
+        sessionId:
+          type: string
+          description: Sticky session identifier used to maintain LLM context.
+        message:
+          type: string
+          description: User message.
+
+    LlmUsage:
+      type: object
+      description: >
+        LLM usage metadata used by WSO2 API Manager AI Gateway for analytics
+        and throttling. Values are estimated by the backend service.
+      required:
+        - completionTokenCount
+        - promptTokenCount
+        - responseModel
+        - totalTokenCount
+      properties:
+        responseModel:
+          type: string
+          example: "gpt-4o"
+        promptTokenCount:
+          type: integer
+          format: int32
+          example: 27
+        completionTokenCount:
+          type: integer
+          format: int32
+          example: 120
+        totalTokenCount:
+          type: integer
+          format: int32
+          example: 147
+        remainingTokenCount:
+          type: integer
+          format: int32
+          nullable: true
+          example: 980000
+
+    AgentResponse:
+      type: object
+      required:
+        - agentName
+        - message
+        - promptVersion
+        - sessionId
+      properties:
+        sessionId:
+          type: string
+        agentName:
+          type: string
+          example: "PharmaOmniAgent"
+        promptVersion:
+          type: string
+          example: "pharma-omni-v1.0.0"
+        message:
+          type: string
+        llm:
+          $ref: '#/components/schemas/LlmUsage'
+
+    ErrorBody:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        details:
+          type: string
+          nullable: true
+
+  securitySchemes:
+    default:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://test.com
+          scopes: {}
+
+x-wso2-auth-header: Authorization
+x-wso2-api-key-header: ApiKey
+x-wso2-cors:
+  corsConfigurationEnabled: false
+  accessControlAllowOrigins:
+    - '*'
+  accessControlAllowCredentials: false
+  accessControlAllowHeaders:
+    - authorization
+    - Access-Control-Allow-Origin
+    - Content-Type
+    - SOAPAction
+    - apikey
+    - Internal-Key
+  accessControlAllowMethods:
+    - GET
+    - PUT
+    - POST
+    - DELETE
+    - PATCH
+    - OPTIONS
+x-wso2-production-endpoints:
+  urls:
+    - http://localhost:8293/
+  type: http
+x-wso2-basePath: /pharma-omni/1.0.0
+x-wso2-transports:
+  - http
+  - https
+x-wso2-application-security:
+  security-types:
+    - api_key
+  optional: false
+x-wso2-response-cache:
+  enabled: false
+  cacheTimeoutInSeconds: 300
