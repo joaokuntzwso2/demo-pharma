@@ -5,9 +5,10 @@ info:
     Omni agent orchestration endpoint for Pharma, used as a Custom AI
     Provider in WSO2 API Manager.
 
-    This API exposes a single chat endpoint that orchestrates multiple internal
-    agents (care, operations, compliance, finance) and returns a final safe
-    answer, along with LLM usage metadata for analytics and throttling.
+    This API exposes chat endpoints for the Omni agent and specialized domain
+    agents (care, operations, compliance, finance). These endpoints return
+    a final safe answer, along with LLM usage metadata for analytics and
+    throttling.
   version: 1.0.0
 
 servers:
@@ -29,8 +30,7 @@ paths:
       operationId: omniChat
       requestBody:
         required: true
-        description: >
-          Request payload for the Omni Agent.
+        description: Request payload for the Omni Agent.
         content:
           application/json:
             schema:
@@ -55,6 +55,236 @@ paths:
                   promptTokenCount: 27
                   completionTokenCount: 120
                   totalTokenCount: 147
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal error during agent execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      security:
+        - default: []
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - api_key
+        optional: false
+
+  /v1/care/chat:
+    post:
+      summary: Chat with Pharma Care Agent
+      description: >
+        Receives a user message and a sticky sessionId,
+        uses patient and inventory context through the care workflow,
+        and returns a safe response along with LLM usage metadata.
+        The care agent focuses on patient context, prescriptions,
+        and apparent store availability, but does not provide medical advice.
+      operationId: careChat
+      requestBody:
+        required: true
+        description: Request payload for the Care Agent.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+            example:
+              sessionId: "sess-care-1"
+              message: "Please look up patient PAT-BR-001, summarize the active prescriptions, and tell me whether MED-INSULINA appears to be available at store LOJA-SP-001."
+      responses:
+        '200':
+          description: Successful response from Care Agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+              example:
+                sessionId: "sess-care-1"
+                agentName: "PharmaCareAgent"
+                promptVersion: "pharma-care-v1.0.0"
+                message: "Please look up patient PAT-BR-001, summarize the active prescriptions, and tell me whether MED-INSULINA appears to be available at store LOJA-SP-001."
+                llm:
+                  responseModel: "gpt-4o"
+                  promptTokenCount: 26
+                  completionTokenCount: 110
+                  totalTokenCount: 136
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal error during agent execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      security:
+        - default: []
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - api_key
+        optional: false
+
+  /v1/ops/chat:
+    post:
+      summary: Chat with Pharma Ops Agent
+      description: >
+        Receives a user message and a sticky sessionId,
+        uses operational workflows and tools to inspect inventory,
+        order status, and shipment status, and returns a safe response
+        along with LLM usage metadata.
+      operationId: opsChat
+      requestBody:
+        required: true
+        description: Request payload for the Ops Agent.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+            example:
+              sessionId: "sess-ops-1"
+              message: "Please check the MED-INSULINA stock at store LOJA-SP-001 and the status of order ORD-LOJA-SP-001-MED-INSULINA-2025-01-10T10:00:00.000Z and shipment SHP-ORD-LOJA-SP-001-MED-INSULINA-2025-01-10T10:00:00.000Z-2025-01-10T12:00:00.000Z."
+      responses:
+        '200':
+          description: Successful response from Ops Agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+              example:
+                sessionId: "sess-ops-1"
+                agentName: "PharmaOpsAgent"
+                promptVersion: "pharma-ops-v1.0.0"
+                message: "Please check the MED-INSULINA stock at store LOJA-SP-001 and the status of order ORD-LOJA-SP-001-MED-INSULINA-2025-01-10T10:00:00.000Z and shipment SHP-ORD-LOJA-SP-001-MED-INSULINA-2025-01-10T10:00:00.000Z-2025-01-10T12:00:00.000Z."
+                llm:
+                  responseModel: "gpt-4o"
+                  promptTokenCount: 35
+                  completionTokenCount: 118
+                  totalTokenCount: 153
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal error during agent execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      security:
+        - default: []
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - api_key
+        optional: false
+
+  /v1/compliance/chat:
+    post:
+      summary: Chat with Pharma Compliance Agent
+      description: >
+        Receives a user message and a sticky sessionId,
+        uses compliance-oriented reasoning to produce a conservative
+        safety-focused summary and returns LLM usage metadata.
+        This agent does not provide legal or clinical advice.
+      operationId: complianceChat
+      requestBody:
+        required: true
+        description: Request payload for the Compliance Agent.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+            example:
+              sessionId: "sess-compliance-1"
+              message: "Please analyze possible compliance considerations for patient PAT-BR-001, MED-INSULINA, store LOJA-SP-001, and shipment SHP-ORD-LOJA-SP-001-MED-INSULINA-2025-01-10T10:00:00.000Z-2025-01-10T12:00:00.000Z."
+      responses:
+        '200':
+          description: Successful response from Compliance Agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+              example:
+                sessionId: "sess-compliance-1"
+                agentName: "PharmaComplianceAgent"
+                promptVersion: "pharma-compliance-v1.0.0"
+                message: "Please analyze possible compliance considerations for patient PAT-BR-001, MED-INSULINA, store LOJA-SP-001, and shipment SHP-ORD-LOJA-SP-001-MED-INSULINA-2025-01-10T10:00:00.000Z-2025-01-10T12:00:00.000Z."
+                llm:
+                  responseModel: "gpt-4o"
+                  promptTokenCount: 33
+                  completionTokenCount: 130
+                  totalTokenCount: 163
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Internal error during agent execution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+      security:
+        - default: []
+      x-auth-type: Application & Application User
+      x-throttling-tier: Unlimited
+      x-wso2-application-security:
+        security-types:
+          - api_key
+        optional: false
+
+  /v1/finance/chat:
+    post:
+      summary: Chat with Pharma Finance Agent
+      description: >
+        Receives a user message and a sticky sessionId,
+        uses the finance workflow to explain or trigger tax-report
+        submission through the integration layer and returns a safe response
+        along with LLM usage metadata.
+        This agent does not provide fiscal advice.
+      operationId: financeChat
+      requestBody:
+        required: true
+        description: Request payload for the Finance Agent.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRequest'
+            example:
+              sessionId: "sess-finance-1"
+              message: "Please submit a tax report for store LOJA-SP-001 in the amount of 12345.67 BRL and explain what the integration just did."
+      responses:
+        '200':
+          description: Successful response from Finance Agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+              example:
+                sessionId: "sess-finance-1"
+                agentName: "PharmaFinanceAgent"
+                promptVersion: "pharma-finance-v1.0.0"
+                message: "Please submit a tax report for store LOJA-SP-001 in the amount of 12345.67 BRL and explain what the integration just did."
+                llm:
+                  responseModel: "gpt-4o"
+                  promptTokenCount: 24
+                  completionTokenCount: 105
+                  totalTokenCount: 129
         '400':
           description: Invalid request
           content:
