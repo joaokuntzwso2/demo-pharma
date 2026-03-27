@@ -1,3 +1,6 @@
+import ballerina/http;
+import ballerina/log;
+import ballerina/time;
 import ballerina/uuid;
 import ballerina/lang.'string as string;
 import ballerinax/ai;
@@ -16,6 +19,10 @@ public isolated function generateCorrelationIdForTool(string toolName) returns s
 
 // Safely truncate a string for logs without panics.
 public isolated function safeTruncate(string value, int maxLen) returns string {
+    if maxLen <= 0 {
+        return "";
+    }
+
     if value.length() <= maxLen {
         return value;
     }
@@ -40,12 +47,187 @@ public isolated function maskShipmentId(string shipmentId) returns string {
 }
 
 // -----------------------------------------------------------------------------
+// Agent-to-agent handoff interception
+// -----------------------------------------------------------------------------
+
+// Best-effort timestamp for logs / webhook payloads.
+function nowUtcIsoString() returns string {
+    return time:utcNow().toString();
+}
+
+function buildAgentHandoffEvent(
+    string fromAgent,
+    string toAgent,
+    string domain,
+    string sessionId,
+    string message,
+    string correlationId,
+    string stage,
+    string outcome
+) returns AgentHandoffEvent {
+    return {
+        eventType: "AGENT_HANDOFF_INTERCEPTED",
+        correlationId: correlationId,
+        fromAgent: fromAgent,
+        toAgent: toAgent,
+        domain: domain,
+        stage: stage,
+        sessionId: sessionId,
+        messagePreview: safeTruncate(message, 180),
+        outcome: outcome,
+        timestamp: nowUtcIsoString()
+    };
+}
+
+// Best-effort webhook dispatch.
+// This is intentionally non-blocking from a business perspective:
+// failures are logged but never fail the main user flow.
+function dispatchAgentHandoffWebhook(AgentHandoffEvent evt) {
+    if !ENABLE_AGENT_HANDOFF_WEBHOOK {
+        return;
+    }
+
+    string url = AGENT_HANDOFF_WEBHOOK_URL.trim();
+    if url.length() == 0 {
+        log:printWarn("Agent handoff webhook dispatch skipped: empty webhook URL",
+            'value = {
+                "correlationId": evt.correlationId,
+                "fromAgent": evt.fromAgent,
+                "toAgent": evt.toAgent,
+                "stage": evt.stage
+            });
+        return;
+    }
+
+    http:Client webhookClient = checkpanic new (url, {
+        timeout: 2.0,
+        secureSocket: {
+            enable: false
+        }
+    });
+
+    json payload = {
+        eventType: evt.eventType,
+        correlationId: evt.correlationId,
+        fromAgent: evt.fromAgent,
+        toAgent: evt.toAgent,
+        domain: evt.domain,
+        stage: evt.stage,
+        sessionId: evt.sessionId,
+        messagePreview: evt.messagePreview,
+        outcome: evt.outcome,
+        timestamp: evt.timestamp
+    };
+
+    http:Response|error respOrErr = webhookClient->post("", payload);
+
+    if respOrErr is error {
+        log:printWarn("Agent handoff webhook dispatch failed",
+            'value = {
+                "correlationId": evt.correlationId,
+                "fromAgent": evt.fromAgent,
+                "toAgent": evt.toAgent,
+                "domain": evt.domain,
+                "stage": evt.stage,
+                "webhookUrl": url,
+                "error": respOrErr.message()
+            });
+        return;
+    }
+
+    log:printInfo("Agent handoff webhook dispatched",
+        'value = {
+            "correlationId": evt.correlationId,
+            "fromAgent": evt.fromAgent,
+            "toAgent": evt.toAgent,
+            "domain": evt.domain,
+            "stage": evt.stage,
+            "webhookUrl": url,
+            "statusCode": respOrErr.statusCode
+        });
+}
+
+public function beforeAgentHandoff(
+    string fromAgent,
+    string toAgent,
+    string domain,
+    string sessionId,
+    string message,
+    string correlationId
+) {
+    AgentHandoffEvent evt = buildAgentHandoffEvent(
+        fromAgent,
+        toAgent,
+        domain,
+        sessionId,
+        message,
+        correlationId,
+        "BEFORE",
+        "PENDING"
+    );
+
+    log:printInfo("AGENT_HANDOFF_INTERCEPTED",
+        'value = evt
+    );
+
+    log:printInfo("Demo action executed on agent-to-agent interception",
+        'value = {
+            "correlationId": correlationId,
+            "fromAgent": fromAgent,
+            "toAgent": toAgent,
+            "domain": domain,
+            "stage": "BEFORE",
+            "action": "CUSTOM_HOOK_EXECUTED"
+        });
+
+    dispatchAgentHandoffWebhook(evt);
+}
+
+public function afterAgentHandoff(
+    string fromAgent,
+    string toAgent,
+    string domain,
+    string sessionId,
+    string message,
+    string correlationId,
+    string outcome
+) {
+    AgentHandoffEvent evt = buildAgentHandoffEvent(
+        fromAgent,
+        toAgent,
+        domain,
+        sessionId,
+        message,
+        correlationId,
+        "AFTER",
+        outcome
+    );
+
+    log:printInfo("AGENT_HANDOFF_INTERCEPTED",
+        'value = evt
+    );
+
+    log:printInfo("Demo action executed on agent-to-agent interception",
+        'value = {
+            "correlationId": correlationId,
+            "fromAgent": fromAgent,
+            "toAgent": toAgent,
+            "domain": domain,
+            "stage": "AFTER",
+            "outcome": outcome,
+            "action": "CUSTOM_HOOK_EXECUTED"
+        });
+
+    dispatchAgentHandoffWebhook(evt);
+}
+
+// -----------------------------------------------------------------------------
 // Domain routing helpers for Omni agent
 // -----------------------------------------------------------------------------
 
 // ASCII case-insensitive substring check.
 // This is intentionally simple and robust for mixed English/PT-BR prompts.
-isolated function containsAnySubstringIgnoreCase(
+function containsAnySubstringIgnoreCase(
     string sourceString,
     readonly & string[] markers
 ) returns boolean {
@@ -109,7 +291,7 @@ const string[] FINANCE_KEYWORDS = [
 
 // Detect one or more domains from the user message.
 // Default to CARE for safety when nothing matches.
-public isolated function detectPharmaDomains(string userMessage) returns PharmaDomain[] {
+public function detectPharmaDomains(string userMessage) returns PharmaDomain[] {
     PharmaDomain[] domains = [];
 
     if containsAnySubstringIgnoreCase(userMessage, CARE_KEYWORDS) {
@@ -141,7 +323,7 @@ const string[] TRANSIENT_LLM_ERROR_MARKERS = [
     "temporarily unavailable", "try again later", "gateway timeout"
 ];
 
-public isolated function isTransientLLMError(ai:Error err) returns boolean {
+public function isTransientLLMError(ai:Error err) returns boolean {
     return containsAnySubstringIgnoreCase(err.message(), TRANSIENT_LLM_ERROR_MARKERS);
 }
 

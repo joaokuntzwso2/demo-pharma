@@ -1,5 +1,4 @@
 import ballerina/http;
-import ballerina/log;
 import ballerinax/ai;
 
 // -----------------------------------------------------------------------------
@@ -19,7 +18,6 @@ final http:Client backendClient = checkpanic new (BACKEND_BASE_URL, {
         maxWaitInterval: BACKEND_HTTP_RETRY_MAX_WAIT_SECONDS,
         statusCodes: BACKEND_HTTP_RETRY_STATUS_CODES
     },
-    // In production this MUST use proper TLS / mTLS.
     secureSocket: {
         enable: false
     }
@@ -83,11 +81,21 @@ public isolated function buildClientErrorEnvelope(
     );
 }
 
-// Build headers towards MI/APIM, including correlation and optional OAuth2.
-isolated function buildBackendHeaders(string corrId) returns map<string|string[]> {
+// Build headers towards MI/APIM, including correlation, agent identity,
+// interception metadata, and optional OAuth2.
+isolated function buildBackendHeaders(
+    string corrId,
+    string agentName,
+    string agentDomain,
+    string agentTool
+) returns map<string|string[]> {
     map<string|string[]> headers = {
         "X-Correlation-Id": corrId,
-        "x-fapi-interaction-id": corrId
+        "x-fapi-interaction-id": corrId,
+        "X-Agent-Name": agentName,
+        "X-Agent-Domain": agentDomain,
+        "X-Agent-Tool": agentTool,
+        "X-Agent-Intercepted": "true"
     };
 
     if BACKEND_ACCESS_TOKEN != "" {
@@ -106,8 +114,6 @@ isolated function isRetryableStatusCode(int statusCode) returns boolean {
 isolated function tryGetJson(http:Response resp) returns json? {
     json|error payloadOrErr = resp.getJsonPayload();
     if payloadOrErr is error {
-        // Most common case we want to tolerate: empty body (e.g., 404 with no payload)
-        // We intentionally DO NOT treat as fatal for non-2xx flows.
         return ();
     }
     return payloadOrErr;
@@ -132,11 +138,8 @@ isolated function buildHttpErrorEnvelope(
 ) returns json {
 
     boolean safeToRetry = isRetryableStatusCode(statusCode);
-
-    // Default message
     string msg = "Backend returned HTTP status " + statusCode.toString();
 
-    // If backend returned JSON object, try to extract { "message": "..." }
     if payload is map<anydata> {
         anydata? maybeMsg = payload["message"];
         if maybeMsg is string {
@@ -158,233 +161,234 @@ isolated function buildHttpErrorEnvelope(
 }
 
 // -----------------------------------------------------------------------------
-// Agent tools (LLM-visible functions)
+// Shared backend execution helpers
+// -----------------------------------------------------------------------------
+
+isolated function executeBackendGet(
+    string toolName,
+    string agentName,
+    string agentDomain,
+    string path,
+    string corrId
+) returns json {
+    map<string|string[]> headers = buildBackendHeaders(corrId, agentName, agentDomain, toolName);
+
+    http:Response|error respOrErr = backendClient->get(path, headers);
+    if respOrErr is error {
+        return buildClientErrorEnvelope(toolName, respOrErr, corrId);
+    }
+
+    http:Response resp = respOrErr;
+
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope(toolName, resp.statusCode, corrId, errPayload);
+    }
+
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope(toolName, error("EMPTY_JSON_PAYLOAD"), corrId);
+    }
+
+    return buildBackendSuccessEnvelope(toolName, resp.statusCode, payload, corrId);
+}
+
+isolated function executeBackendPost(
+    string toolName,
+    string agentName,
+    string agentDomain,
+    string path,
+    json body,
+    string corrId
+) returns json {
+    map<string|string[]> headers = buildBackendHeaders(corrId, agentName, agentDomain, toolName);
+
+    http:Response|error respOrErr = backendClient->post(path, body, headers);
+    if respOrErr is error {
+        return buildClientErrorEnvelope(toolName, respOrErr, corrId);
+    }
+
+    http:Response resp = respOrErr;
+
+    if resp.statusCode < 200 || resp.statusCode >= 300 {
+        json? errPayload = tryGetJson(resp);
+        return buildHttpErrorEnvelope(toolName, resp.statusCode, corrId, errPayload);
+    }
+
+    json? payload = tryGetJson(resp);
+    if payload is () {
+        return buildClientErrorEnvelope(toolName, error("EMPTY_JSON_PAYLOAD"), corrId);
+    }
+
+    return buildBackendSuccessEnvelope(toolName, resp.statusCode, payload, corrId);
+}
+
+// -----------------------------------------------------------------------------
+// Agent-specific tools (LLM-visible functions)
 // -----------------------------------------------------------------------------
 
 @ai:AgentTool {
-    name: "GetPatientProfileTool",
+    name: "CareGetPatientProfileTool",
     description: "Fetch patient profile and active prescriptions for a given patient id."
 }
-public isolated function getPatientProfileTool(PatientProfileInput input) returns json {
-    string corrId = generateCorrelationIdForTool("GetPatientProfile");
-
-    log:printInfo("GetPatientProfileTool starting",
-        'value = {
-            "correlationId": corrId,
-            "patientIdMasked": maskPatientId(input.patientId)
-        });
-
+public isolated function careGetPatientProfileTool(PatientProfileInput input) returns json {
+    string corrId = generateCorrelationIdForTool("CareGetPatientProfile");
     string path = string `/customers/1.0.0/patient/${input.patientId}`;
-    map<string|string[]> headers = buildBackendHeaders(corrId);
-
-    http:Response|error respOrErr = backendClient->get(path, headers);
-    if respOrErr is error {
-        log:printError("GetPatientProfileTool HTTP call failed",
-            'error = respOrErr,
-            'value = { "correlationId": corrId });
-        return buildClientErrorEnvelope("GetPatientProfileTool", respOrErr, corrId);
-    }
-
-    http:Response resp = respOrErr;
-
-    log:printInfo("GetPatientProfileTool HTTP call completed",
-        'value = {
-            "statusCode": resp.statusCode,
-            "correlationId": corrId
-        });
-
-    if resp.statusCode < 200 || resp.statusCode >= 300 {
-        json? errPayload = tryGetJson(resp);
-        return buildHttpErrorEnvelope("GetPatientProfileTool", resp.statusCode, corrId, errPayload);
-    }
-
-    json? payload = tryGetJson(resp);
-    if payload is () {
-        return buildClientErrorEnvelope("GetPatientProfileTool", error("EMPTY_JSON_PAYLOAD"), corrId);
-    }
-    return buildBackendSuccessEnvelope("GetPatientProfileTool", resp.statusCode, payload, corrId);
+    return executeBackendGet(
+        "CareGetPatientProfileTool",
+        PHARMA_CARE_AGENT_NAME,
+        "CARE",
+        path,
+        corrId
+    );
 }
 
 @ai:AgentTool {
-    name: "GetStoreInventoryTool",
+    name: "CareGetStoreInventoryTool",
     description: "Get inventory for a given store and SKU."
 }
-public isolated function getStoreInventoryTool(StoreInventoryInput input) returns json {
-    string corrId = generateCorrelationIdForTool("GetStoreInventory");
-
-    log:printInfo("GetStoreInventoryTool starting",
-        'value = {
-            "correlationId": corrId,
-            "storeIdMasked": maskStoreId(input.storeId),
-            "sku": input.sku
-        });
-
+public isolated function careGetStoreInventoryTool(StoreInventoryInput input) returns json {
+    string corrId = generateCorrelationIdForTool("CareGetStoreInventory");
     string path = string `/inventory/1.0.0/stores/${input.storeId}/items/${input.sku}`;
-    map<string|string[]> headers = buildBackendHeaders(corrId);
-
-    http:Response|error respOrErr = backendClient->get(path, headers);
-    if respOrErr is error {
-        log:printError("GetStoreInventoryTool HTTP call failed",
-            'error = respOrErr,
-            'value = { "correlationId": corrId });
-        return buildClientErrorEnvelope("GetStoreInventoryTool", respOrErr, corrId);
-    }
-
-    http:Response resp = respOrErr;
-
-    log:printInfo("GetStoreInventoryTool HTTP call completed",
-        'value = {
-            "statusCode": resp.statusCode,
-            "correlationId": corrId
-        });
-
-    if resp.statusCode < 200 || resp.statusCode >= 300 {
-        json? errPayload = tryGetJson(resp);
-        return buildHttpErrorEnvelope("GetStoreInventoryTool", resp.statusCode, corrId, errPayload);
-    }
-
-    json? payload = tryGetJson(resp);
-    if payload is () {
-        return buildClientErrorEnvelope("GetStoreInventoryTool", error("EMPTY_JSON_PAYLOAD"), corrId);
-    }
-    return buildBackendSuccessEnvelope("GetStoreInventoryTool", resp.statusCode, payload, corrId);
+    return executeBackendGet(
+        "CareGetStoreInventoryTool",
+        PHARMA_CARE_AGENT_NAME,
+        "CARE",
+        path,
+        corrId
+    );
 }
 
 @ai:AgentTool {
-    name: "GetOrderStatusTool",
+    name: "OpsGetStoreInventoryTool",
+    description: "Get inventory for a given store and SKU."
+}
+public isolated function opsGetStoreInventoryTool(StoreInventoryInput input) returns json {
+    string corrId = generateCorrelationIdForTool("OpsGetStoreInventory");
+    string path = string `/inventory/1.0.0/stores/${input.storeId}/items/${input.sku}`;
+    return executeBackendGet(
+        "OpsGetStoreInventoryTool",
+        PHARMA_OPS_AGENT_NAME,
+        "OPS",
+        path,
+        corrId
+    );
+}
+
+@ai:AgentTool {
+    name: "OpsGetOrderStatusTool",
     description: "Get prescription order status for a given order id."
 }
-public isolated function getOrderStatusTool(OrderStatusInput input) returns json {
-    string corrId = generateCorrelationIdForTool("GetOrderStatus");
-
-    log:printInfo("GetOrderStatusTool starting",
-        'value = {
-            "correlationId": corrId,
-            "orderIdMasked": maskOrderId(input.orderId)
-        });
-
+public isolated function opsGetOrderStatusTool(OrderStatusInput input) returns json {
+    string corrId = generateCorrelationIdForTool("OpsGetOrderStatus");
     string path = string `/orders/1.0.0?orderId=${input.orderId}`;
-    map<string|string[]> headers = buildBackendHeaders(corrId);
-
-    http:Response|error respOrErr = backendClient->get(path, headers);
-    if respOrErr is error {
-        log:printError("GetOrderStatusTool HTTP call failed",
-            'error = respOrErr,
-            'value = { "correlationId": corrId });
-        return buildClientErrorEnvelope("GetOrderStatusTool", respOrErr, corrId);
-    }
-
-    http:Response resp = respOrErr;
-
-    log:printInfo("GetOrderStatusTool HTTP call completed",
-        'value = {
-            "statusCode": resp.statusCode,
-            "correlationId": corrId
-        });
-
-    if resp.statusCode < 200 || resp.statusCode >= 300 {
-        json? errPayload = tryGetJson(resp);
-        return buildHttpErrorEnvelope("GetOrderStatusTool", resp.statusCode, corrId, errPayload);
-    }
-
-    json? payload = tryGetJson(resp);
-    if payload is () {
-        return buildClientErrorEnvelope("GetOrderStatusTool", error("EMPTY_JSON_PAYLOAD"), corrId);
-    }
-    return buildBackendSuccessEnvelope("GetOrderStatusTool", resp.statusCode, payload, corrId);
+    return executeBackendGet(
+        "OpsGetOrderStatusTool",
+        PHARMA_OPS_AGENT_NAME,
+        "OPS",
+        path,
+        corrId
+    );
 }
 
 @ai:AgentTool {
-    name: "GetShipmentStatusTool",
+    name: "OpsGetShipmentStatusTool",
     description: "Get shipment status for a given shipment id."
 }
-public isolated function getShipmentStatusTool(ShipmentStatusInput input) returns json {
-    string corrId = generateCorrelationIdForTool("GetShipmentStatus");
-
-    log:printInfo("GetShipmentStatusTool starting",
-        'value = {
-            "correlationId": corrId,
-            "shipmentIdMasked": maskShipmentId(input.shipmentId)
-        });
-
+public isolated function opsGetShipmentStatusTool(ShipmentStatusInput input) returns json {
+    string corrId = generateCorrelationIdForTool("OpsGetShipmentStatus");
     string path = string `/shipments/1.0.0?shipmentId=${input.shipmentId}`;
-    map<string|string[]> headers = buildBackendHeaders(corrId);
-
-    http:Response|error respOrErr = backendClient->get(path, headers);
-    if respOrErr is error {
-        log:printError("GetShipmentStatusTool HTTP call failed",
-            'error = respOrErr,
-            'value = { "correlationId": corrId });
-        return buildClientErrorEnvelope("GetShipmentStatusTool", respOrErr, corrId);
-    }
-
-    http:Response resp = respOrErr;
-
-    log:printInfo("GetShipmentStatusTool HTTP call completed",
-        'value = {
-            "statusCode": resp.statusCode,
-            "correlationId": corrId
-        });
-
-    // IMPORTANT: handle 404/500 etc. without attempting JSON parse that can fail on empty body.
-    if resp.statusCode < 200 || resp.statusCode >= 300 {
-        json? errPayload = tryGetJson(resp);
-        return buildHttpErrorEnvelope("GetShipmentStatusTool", resp.statusCode, corrId, errPayload);
-    }
-
-    json? payload = tryGetJson(resp);
-    if payload is () {
-        return buildClientErrorEnvelope("GetShipmentStatusTool", error("EMPTY_JSON_PAYLOAD"), corrId);
-    }
-    return buildBackendSuccessEnvelope("GetShipmentStatusTool", resp.statusCode, payload, corrId);
+    return executeBackendGet(
+        "OpsGetShipmentStatusTool",
+        PHARMA_OPS_AGENT_NAME,
+        "OPS",
+        path,
+        corrId
+    );
 }
 
 @ai:AgentTool {
-    name: "SubmitTaxReportTool",
+    name: "ComplianceGetPatientProfileTool",
+    description: "Fetch patient profile and active prescriptions for a given patient id."
+}
+public isolated function complianceGetPatientProfileTool(PatientProfileInput input) returns json {
+    string corrId = generateCorrelationIdForTool("ComplianceGetPatientProfile");
+    string path = string `/customers/1.0.0/patient/${input.patientId}`;
+    return executeBackendGet(
+        "ComplianceGetPatientProfileTool",
+        PHARMA_COMPLIANCE_AGENT_NAME,
+        "COMPLIANCE",
+        path,
+        corrId
+    );
+}
+
+@ai:AgentTool {
+    name: "ComplianceGetStoreInventoryTool",
+    description: "Get inventory for a given store and SKU."
+}
+public isolated function complianceGetStoreInventoryTool(StoreInventoryInput input) returns json {
+    string corrId = generateCorrelationIdForTool("ComplianceGetStoreInventory");
+    string path = string `/inventory/1.0.0/stores/${input.storeId}/items/${input.sku}`;
+    return executeBackendGet(
+        "ComplianceGetStoreInventoryTool",
+        PHARMA_COMPLIANCE_AGENT_NAME,
+        "COMPLIANCE",
+        path,
+        corrId
+    );
+}
+
+@ai:AgentTool {
+    name: "ComplianceGetOrderStatusTool",
+    description: "Get prescription order status for a given order id."
+}
+public isolated function complianceGetOrderStatusTool(OrderStatusInput input) returns json {
+    string corrId = generateCorrelationIdForTool("ComplianceGetOrderStatus");
+    string path = string `/orders/1.0.0?orderId=${input.orderId}`;
+    return executeBackendGet(
+        "ComplianceGetOrderStatusTool",
+        PHARMA_COMPLIANCE_AGENT_NAME,
+        "COMPLIANCE",
+        path,
+        corrId
+    );
+}
+
+@ai:AgentTool {
+    name: "ComplianceGetShipmentStatusTool",
+    description: "Get shipment status for a given shipment id."
+}
+public isolated function complianceGetShipmentStatusTool(ShipmentStatusInput input) returns json {
+    string corrId = generateCorrelationIdForTool("ComplianceGetShipmentStatus");
+    string path = string `/shipments/1.0.0?shipmentId=${input.shipmentId}`;
+    return executeBackendGet(
+        "ComplianceGetShipmentStatusTool",
+        PHARMA_COMPLIANCE_AGENT_NAME,
+        "COMPLIANCE",
+        path,
+        corrId
+    );
+}
+
+@ai:AgentTool {
+    name: "FinanceSubmitTaxReportTool",
     description: "Submit a tax report asynchronously (MI will queue to TaxReportStore)."
 }
-public isolated function submitTaxReportTool(TaxReportInput input) returns json {
-    string corrId = generateCorrelationIdForTool("SubmitTaxReport");
-
-    log:printInfo("SubmitTaxReportTool starting",
-        'value = {
-            "correlationId": corrId,
-            "storeIdMasked": maskStoreId(input.storeId),
-            "amountBr": input.amountBr.toString()
-        });
-
-    string path = "/finance/1.0.0/tax-report/async";
-    map<string|string[]> headers = buildBackendHeaders(corrId);
+public isolated function financeSubmitTaxReportTool(TaxReportInput input) returns json {
+    string corrId = generateCorrelationIdForTool("FinanceSubmitTaxReport");
 
     json body = {
         storeId: input.storeId,
         amountBr: input.amountBr
     };
 
-    http:Response|error respOrErr = backendClient->post(path, body, headers);
-    if respOrErr is error {
-        log:printError("SubmitTaxReportTool HTTP call failed",
-            'error = respOrErr,
-            'value = { "correlationId": corrId });
-        return buildClientErrorEnvelope("SubmitTaxReportTool", respOrErr, corrId);
-    }
-
-    http:Response resp = respOrErr;
-
-    log:printInfo("SubmitTaxReportTool HTTP call completed",
-        'value = {
-            "statusCode": resp.statusCode,
-            "correlationId": corrId
-        });
-
-    if resp.statusCode < 200 || resp.statusCode >= 300 {
-        json? errPayload = tryGetJson(resp);
-        return buildHttpErrorEnvelope("SubmitTaxReportTool", resp.statusCode, corrId, errPayload);
-    }
-
-    json? payload = tryGetJson(resp);
-    if payload is () {
-        return buildClientErrorEnvelope("SubmitTaxReportTool", error("EMPTY_JSON_PAYLOAD"), corrId);
-    }
-    return buildBackendSuccessEnvelope("SubmitTaxReportTool", resp.statusCode, payload, corrId);
+    return executeBackendPost(
+        "FinanceSubmitTaxReportTool",
+        PHARMA_FINANCE_AGENT_NAME,
+        "FINANCE",
+        "/finance/1.0.0/tax-report/async",
+        body,
+        corrId
+    );
 }

@@ -15,8 +15,9 @@
 
     <log level="custom">
         <property name="log.type" value="OUT"/>
-        <property name="api.name" expression="get-property('API_NAME')"/>
-        <property name="resource" expression="get-property('axis2','REST_URL_POSTFIX')"/>
+        <property name="api.name" expression="get-property('INTERCEPTED_API_NAME')"/>
+        <property name="resource" expression="get-property('INTERCEPTED_RESOURCE')"/>
+        <property name="http.method" expression="get-property('INTERCEPTED_HTTP_METHOD')"/>
         <property name="http.status" expression="get-property('axis2','HTTP_SC')"/>
         <property name="correlationId" expression="get-property('CorrelationId')"/>
         <property name="latency.ms" expression="get-property('LATENCY_MS')"/>

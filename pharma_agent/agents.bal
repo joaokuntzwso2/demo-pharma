@@ -23,9 +23,9 @@ FOCUS
 
 DATA ACCESS
 You NEVER access core systems directly. You ONLY use tools exposed by the
-integration layer (WSO2 MI / APIM):
+integration layer (WSO2 MI / APIM), specifically the tools assigned to you:
 
-1) GetPatientProfileTool
+1) CareGetPatientProfileTool
    - Input: { "patientId": "<PAT-BR-...>" }
    - Returns:
      - patientId, cpf, name,
@@ -33,7 +33,7 @@ integration layer (WSO2 MI / APIM):
      - preferredStoreId,
      - activePrescriptions[] with refillable and refillEligible.
 
-2) GetStoreInventoryTool
+2) CareGetStoreInventoryTool
    - Input: { "storeId": "<store>", "sku": "<medication code>" }
    - Returns store-level stock and coldChain flag.
 
@@ -97,17 +97,17 @@ FOCUS
 - Explain high-level next steps without over-committing SLAs.
 
 TOOLS
-You ONLY use MI tools:
+You ONLY use MI tools assigned to you:
 
-1) GetStoreInventoryTool
+1) OpsGetStoreInventoryTool
    - Input: { "storeId", "sku" }
    - Returns quantityOnHand, reorderPoint, coldChain.
 
-2) GetOrderStatusTool
+2) OpsGetOrderStatusTool
    - Input: { "orderId" }
    - Returns order status, slaHours, timestamps, coldChain.
 
-3) GetShipmentStatusTool
+3) OpsGetShipmentStatusTool
    - Input: { "shipmentId" }
    - Returns shipment status, etaHours, coldChain.
 
@@ -143,11 +143,11 @@ FOCUS
   - need for valid prescriptions and documentation.
 
 DATA
-- You read data from:
-  - GetPatientProfileTool,
-  - GetStoreInventoryTool,
-  - GetOrderStatusTool,
-  - GetShipmentStatusTool.
+- You read data from the tools assigned to you:
+  - ComplianceGetPatientProfileTool,
+  - ComplianceGetStoreInventoryTool,
+  - ComplianceGetOrderStatusTool,
+  - ComplianceGetShipmentStatusTool.
 
 RULES
 - You NEVER give legal advice.
@@ -174,10 +174,10 @@ LANGUAGE RULE
 
 FOCUS
 - Explain tax report submissions for the Brazilian context in clear language.
-- Explain what a tax report operation (SubmitTaxReportTool) apparently did.
+- Explain what a tax report operation (FinanceSubmitTaxReportTool) apparently did.
 
 TOOLS
-1) SubmitTaxReportTool
+1) FinanceSubmitTaxReportTool
    - Input: { "storeId", "amountBr" }
    - MI will queue this into a TaxReportStore and respond with a queued ACK.
 
@@ -317,6 +317,28 @@ final ai:OpenAiProvider llmProvider = checkpanic new (
 function init() {
     log:printInfo("Initializing Pharma Agentic APIs (LLM + tools)");
 
+    ai:ToolConfig[] careTools = ai:getToolConfigs([
+        careGetPatientProfileTool,
+        careGetStoreInventoryTool
+    ]);
+
+    ai:ToolConfig[] opsTools = ai:getToolConfigs([
+        opsGetStoreInventoryTool,
+        opsGetOrderStatusTool,
+        opsGetShipmentStatusTool
+    ]);
+
+    ai:ToolConfig[] complianceTools = ai:getToolConfigs([
+        complianceGetPatientProfileTool,
+        complianceGetStoreInventoryTool,
+        complianceGetOrderStatusTool,
+        complianceGetShipmentStatusTool
+    ]);
+
+    ai:ToolConfig[] financeTools = ai:getToolConfigs([
+        financeSubmitTaxReportTool
+    ]);
+
     // Care agent
     ai:Memory careMemory = new ai:MessageWindowChatMemory(AGENT_MEMORY_SIZE);
     ai:SystemPrompt carePrompt = {
@@ -326,7 +348,7 @@ function init() {
     careAgent = checkpanic new (
         systemPrompt = carePrompt,
         model = llmProvider,
-        tools = [getPatientProfileTool, getStoreInventoryTool],
+        tools = careTools,
         memory = careMemory
     );
 
@@ -339,7 +361,7 @@ function init() {
     opsAgent = checkpanic new (
         systemPrompt = opsPrompt,
         model = llmProvider,
-        tools = [getStoreInventoryTool, getOrderStatusTool, getShipmentStatusTool],
+        tools = opsTools,
         memory = opsMemory
     );
 
@@ -352,7 +374,7 @@ function init() {
     complianceAgent = checkpanic new (
         systemPrompt = compliancePrompt,
         model = llmProvider,
-        tools = [getPatientProfileTool, getStoreInventoryTool, getOrderStatusTool, getShipmentStatusTool],
+        tools = complianceTools,
         memory = complianceMemory
     );
 
@@ -365,7 +387,7 @@ function init() {
     financeAgent = checkpanic new (
         systemPrompt = financePrompt,
         model = llmProvider,
-        tools = [submitTaxReportTool],
+        tools = financeTools,
         memory = financeMemory
     );
 
@@ -395,5 +417,18 @@ function init() {
         memory = overlayMemory
     );
 
-    log:printInfo("Pharma Agentic APIs initialized successfully");
+    log:printInfo("Pharma Agentic APIs initialized successfully",
+        'value = {
+            "careTools": ["CareGetPatientProfileTool", "CareGetStoreInventoryTool"],
+            "opsTools": ["OpsGetStoreInventoryTool", "OpsGetOrderStatusTool", "OpsGetShipmentStatusTool"],
+            "complianceTools": [
+                "ComplianceGetPatientProfileTool",
+                "ComplianceGetStoreInventoryTool",
+                "ComplianceGetOrderStatusTool",
+                "ComplianceGetShipmentStatusTool"
+            ],
+            "financeTools": ["FinanceSubmitTaxReportTool"],
+            "interceptionMode": "AGENT_SPECIFIC_TOOL_IDENTITY_ENABLED"
+        }
+    );
 }

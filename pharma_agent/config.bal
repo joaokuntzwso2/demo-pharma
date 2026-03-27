@@ -44,3 +44,8 @@ public const string PHARMA_OMNI_PROMPT_VERSION = "pharma-omni-v1.0.0";
 
 public configurable string PHARMA_COMPLIANCE_OVERLAY_AGENT_NAME = "PharmaBrazilComplianceOverlayAgent";
 public const string PHARMA_COMPLIANCE_OVERLAY_PROMPT_VERSION = "pharma-compliance-overlay-v1.0.0";
+
+public configurable boolean ENABLE_AGENT_HANDOFF_INTERCEPTOR = true;
+public configurable boolean ENABLE_AGENT_HANDOFF_VERBOSE_LOG = true;
+public configurable boolean ENABLE_AGENT_HANDOFF_WEBHOOK = true;
+public configurable string AGENT_HANDOFF_WEBHOOK_URL = "http://pharma-webhook-listener:8099/handoff";

@@ -260,15 +260,47 @@ function handleOmniRequest(
     future<string|ai:Error>? financeFuture = ();
 
     if needsCare {
+        beforeAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_CARE_AGENT_NAME,
+            "CARE",
+            sessionId,
+            userMessage,
+            correlationId
+        );
         careFuture = start careAgent->run(userMessage, sessionId = sessionId);
     }
     if needsOps {
+        beforeAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_OPS_AGENT_NAME,
+            "OPS",
+            sessionId,
+            userMessage,
+            correlationId
+        );
         opsFuture = start opsAgent->run(userMessage, sessionId = sessionId);
     }
     if needsCompliance {
+        beforeAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_COMPLIANCE_AGENT_NAME,
+            "COMPLIANCE",
+            sessionId,
+            userMessage,
+            correlationId
+        );
         complianceFuture = start complianceAgent->run(userMessage, sessionId = sessionId);
     }
     if needsFinance {
+        beforeAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_FINANCE_AGENT_NAME,
+            "FINANCE",
+            sessionId,
+            userMessage,
+            correlationId
+        );
         financeFuture = start financeAgent->run(userMessage, sessionId = sessionId);
     }
 
@@ -290,6 +322,17 @@ function handleOmniRequest(
                 });
             careResult = careAgent->run(userMessage, sessionId = sessionId);
         }
+
+        afterAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_CARE_AGENT_NAME,
+            "CARE",
+            sessionId,
+            userMessage,
+            correlationId,
+            careResult is string ? "SUCCESS" : "ERROR"
+        );
+
         careAnswer = materializeSubAgentAnswer("careAgent", careResult);
     }
 
@@ -306,6 +349,17 @@ function handleOmniRequest(
                 });
             opsResult = opsAgent->run(userMessage, sessionId = sessionId);
         }
+
+        afterAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_OPS_AGENT_NAME,
+            "OPS",
+            sessionId,
+            userMessage,
+            correlationId,
+            opsResult is string ? "SUCCESS" : "ERROR"
+        );
+
         opsAnswer = materializeSubAgentAnswer("opsAgent", opsResult);
     }
 
@@ -322,6 +376,17 @@ function handleOmniRequest(
                 });
             complianceResult = complianceAgent->run(userMessage, sessionId = sessionId);
         }
+
+        afterAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_COMPLIANCE_AGENT_NAME,
+            "COMPLIANCE",
+            sessionId,
+            userMessage,
+            correlationId,
+            complianceResult is string ? "SUCCESS" : "ERROR"
+        );
+
         complianceAnswer = materializeSubAgentAnswer("complianceAgent", complianceResult);
     }
 
@@ -338,6 +403,17 @@ function handleOmniRequest(
                 });
             financeResult = financeAgent->run(userMessage, sessionId = sessionId);
         }
+
+        afterAgentHandoff(
+            PHARMA_OMNI_AGENT_NAME,
+            PHARMA_FINANCE_AGENT_NAME,
+            "FINANCE",
+            sessionId,
+            userMessage,
+            correlationId,
+            financeResult is string ? "SUCCESS" : "ERROR"
+        );
+
         financeAnswer = materializeSubAgentAnswer("financeAgent", financeResult);
     }
 

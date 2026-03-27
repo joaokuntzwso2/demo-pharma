@@ -76,3 +76,16 @@ public type LlmUsage record {|
     // Optional: You can later wire this to a real quota store.
     int? remainingTokenCount?;
 |};
+
+public type AgentHandoffEvent record {|
+    string eventType;
+    string correlationId;
+    string fromAgent;
+    string toAgent;
+    string domain;
+    string stage;
+    string sessionId;
+    string messagePreview;
+    string outcome;
+    string timestamp;
+|};

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <sequence name="CommonInSeq" xmlns="http://ws.apache.org/ns/synapse">
     <!-- Prefer incoming headers -->
     <property name="CorrelationId"
@@ -23,6 +24,22 @@
         </then>
     </filter>
 
+    <!-- Capture request context early, before mediation mutates it -->
+    <property name="INTERCEPTED_API_NAME"
+              expression="get-property('REST_API')"
+              scope="default"
+              type="STRING"/>
+
+    <property name="INTERCEPTED_RESOURCE"
+              expression="get-property('axis2','REST_URL_POSTFIX')"
+              scope="default"
+              type="STRING"/>
+
+    <property name="INTERCEPTED_HTTP_METHOD"
+              expression="get-property('axis2','HTTP_METHOD')"
+              scope="default"
+              type="STRING"/>
+
     <property name="IN_TIMESTAMP"
               expression="get-property('SYSTEM_TIME')"
               scope="default"
@@ -32,12 +49,33 @@
             scope="transport"
             expression="get-property('CorrelationId')"/>
 
+    <!-- Standard ingress log -->
     <log level="custom">
         <property name="log.type" value="IN"/>
-        <property name="api.name" expression="get-property('API_NAME')"/>
-        <property name="resource" expression="get-property('axis2','REST_URL_POSTFIX')"/>
-        <property name="http.method" expression="get-property('axis2','HTTP_METHOD')"/>
+        <property name="api.name" expression="get-property('INTERCEPTED_API_NAME')"/>
+        <property name="resource" expression="get-property('INTERCEPTED_RESOURCE')"/>
+        <property name="http.method" expression="get-property('INTERCEPTED_HTTP_METHOD')"/>
         <property name="client.ip" expression="get-property('axis2','REMOTE_ADDR')"/>
         <property name="correlationId" expression="get-property('CorrelationId')"/>
     </log>
+
+    <!-- Interception log for agent-originated tool calls -->
+    <filter source="get-property('transport','X-Agent-Name')" regex=".+" >
+        <then>
+            <log level="custom">
+                <property name="log.type" value="AGENT_TOOL_CALL_INTERCEPTED"/>
+                <property name="message" value="Call being intercepted"/>
+                <property name="agent.name" expression="get-property('transport','X-Agent-Name')"/>
+                <property name="agent.domain" expression="get-property('transport','X-Agent-Domain')"/>
+                <property name="agent.tool" expression="get-property('transport','X-Agent-Tool')"/>
+                <property name="agent.intercepted" expression="get-property('transport','X-Agent-Intercepted')"/>
+                <property name="api.name" expression="get-property('INTERCEPTED_API_NAME')"/>
+                <property name="resource" expression="get-property('INTERCEPTED_RESOURCE')"/>
+                <property name="http.method" expression="get-property('INTERCEPTED_HTTP_METHOD')"/>
+                <property name="client.ip" expression="get-property('axis2','REMOTE_ADDR')"/>
+                <property name="correlationId" expression="get-property('CorrelationId')"/>
+                <property name="fapi.interaction.id" expression="get-property('transport','x-fapi-interaction-id')"/>
+            </log>
+        </then>
+    </filter>
 </sequence>

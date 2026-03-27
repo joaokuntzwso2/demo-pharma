@@ -57,3 +57,8 @@ services:
       - "8293:8293"
     depends_on:
       - wso2mi
+  pharma-webhook-listener:
+    build: ./pharma-webhook-listener
+    container_name: pharma-webhook-listener
+    ports:
+      - "8099:8099"
